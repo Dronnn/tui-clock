@@ -7,13 +7,19 @@
   'use strict';
 
   function activeRenderer() {
-    return document.documentElement.dataset.style === 'block-stack' ? 'block-stack' : 'segment';
+    var style = document.documentElement.dataset.style;
+    if (style === 'block-stack' || style === 'dash' || style === 'dot-matrix') {
+      return style;
+    }
+    return 'segment';
   }
 
   function clearRendererState(container) {
     container.innerHTML = '';
     container._sdState = null;
     container._bsState = null;
+    container._dashState = null;
+    container._dmState = null;
   }
 
   function renderDigits(container, str) {
@@ -32,6 +38,22 @@
         throw new Error('renderDigits: BlockStackFont renderer is not available');
       }
       window.BlockStackFont.renderBlockStackString(container, str);
+      return;
+    }
+
+    if (renderer === 'dash') {
+      if (!window.DashFont || typeof window.DashFont.renderDashString !== 'function') {
+        throw new Error('renderDigits: DashFont renderer is not available');
+      }
+      window.DashFont.renderDashString(container, str);
+      return;
+    }
+
+    if (renderer === 'dot-matrix') {
+      if (!window.DotMatrixFont || typeof window.DotMatrixFont.renderDotMatrixString !== 'function') {
+        throw new Error('renderDigits: DotMatrixFont renderer is not available');
+      }
+      window.DotMatrixFont.renderDotMatrixString(container, str);
       return;
     }
 

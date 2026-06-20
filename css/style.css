@@ -1878,3 +1878,58 @@ main {
   border-left-color: var(--fg);
   border-left-width: var(--bs-outline-width);
 }
+
+/* ===== Dash + Dot-Matrix fonts ===== */
+
+.segment-display {
+  --dash-font-size: calc(var(--cell-size) * 1.16);
+  --dm-cell: calc(var(--cell-size) * 0.74);
+  --dm-gap: calc(var(--dm-cell) * 0.18);
+  --dm-dot-size: calc(var(--dm-cell) * 0.58);
+}
+
+.dash-glyph {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--dash-font-size);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+  text-shadow: 0 0 calc(var(--cell-size) * 0.5) var(--glow);
+}
+
+.dash-glyph--narrow {
+  margin-left: calc(var(--digit-gap) * -0.25);
+  margin-right: calc(var(--digit-gap) * -0.25);
+}
+
+.dm-glyph {
+  display: grid;
+  grid-template-columns: repeat(5, var(--dm-cell));
+  grid-template-rows: repeat(7, var(--dm-cell));
+  gap: var(--dm-gap);
+  flex: 0 0 auto;
+  width: calc((var(--dm-cell) * 5) + (var(--dm-gap) * 4));
+  height: calc((var(--dm-cell) * 7) + (var(--dm-gap) * 6));
+}
+
+.dm-cell {
+  position: relative;
+  width: var(--dm-cell);
+  height: var(--dm-cell);
+}
+
+.dm-on::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--dm-dot-size);
+  height: var(--dm-dot-size);
+  background: var(--fg);
+  border-radius: calc(var(--dm-dot-size) * 0.08);
+  box-shadow: 0 0 calc(var(--dm-cell) * 0.22) var(--glow);
+  transform: translate(-50%, -50%);
+}
