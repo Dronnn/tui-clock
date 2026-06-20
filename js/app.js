@@ -185,6 +185,10 @@
     document.addEventListener('keydown', onModeKeyDown);
 
     var prefs = loadPrefs();
+    if (prefs.matrixBg && window.MatrixBG) {
+      window.MatrixBG.enable();
+    }
+
     var initialMode = Object.prototype.hasOwnProperty.call(modeContainers, prefs.activeMode)
       ? prefs.activeMode
       : DEFAULT_MODE;

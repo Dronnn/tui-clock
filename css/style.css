@@ -52,8 +52,14 @@ body {
   height: 100%;
 }
 
-body {
+html {
   background: var(--bg);
+}
+
+body {
+  position: relative;
+  z-index: 0;
+  background: transparent;
   color: var(--fg);
   font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
@@ -1183,7 +1189,8 @@ main {
   color: var(--fg);
 }
 
-.settings-panel__option input[type='radio'] {
+.settings-panel__option input[type='radio'],
+.settings-panel__option input[type='checkbox'] {
   accent-color: var(--fg);
   cursor: pointer;
 }

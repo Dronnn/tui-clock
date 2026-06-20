@@ -1,16 +1,17 @@
 // settings-panel.js
-// Gear-icon button + dropdown for choosing a visual style (Flat/3D/CRT)
-// and color scheme (Amber/Green/Cyan), applied as data-style/data-color
-// attributes on <html> and persisted into Storage's 'prefs' object.
+// Gear-icon button + dropdown for choosing a visual style (Flat/3D/CRT),
+// color scheme (Amber/Green/Cyan), and optional Matrix background effect.
+// Theme choices are applied as data-style/data-color attributes on <html>;
+// every setting is persisted into Storage's 'prefs' object.
 // Plain global script, no ES modules — exposes window.SettingsPanel.
 //
 // Public API:
 //   SettingsPanel.init(container)
 //     - container: the mount element (e.g. #settings-panel).
 //     - Builds the gear button + dropdown DOM, restores persisted
-//       visualStyle/colorScheme from Storage('prefs') (defaulting to
-//       'flat'/'amber'), applies them to <html> immediately, and
-//       pre-selects the matching radio buttons.
+//       visualStyle/colorScheme/matrixBg from Storage('prefs') (defaulting
+//       to 'flat'/'amber'/false), applies the theme to <html> immediately,
+//       and pre-selects the matching controls.
 //     - Does not need a tick() — selections apply immediately on change,
 //       there is nothing to poll.
 //
@@ -43,8 +44,10 @@
     container: null,
     toggleButton: null,
     dropdown: null,
+    matrixInput: null,
     visualStyle: DEFAULT_STYLE,
-    colorScheme: DEFAULT_COLOR
+    colorScheme: DEFAULT_COLOR,
+    matrixBg: false
   };
 
   // ---------------------------------------------------------------------
@@ -116,6 +119,24 @@
     return group;
   }
 
+  function buildCheckboxRow(labelText, checked, onChange) {
+    var label = document.createElement('label');
+    label.className = 'settings-panel__option';
+
+    var input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = checked;
+    input.addEventListener('change', function (event) {
+      onChange(event.target.checked);
+    });
+
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(labelText));
+    state.matrixInput = input;
+
+    return label;
+  }
+
   function buildDom(container) {
     container.innerHTML = '';
     container.className = 'settings-panel';
@@ -145,6 +166,16 @@
 
     var colorGroup = buildRadioGroup('settings-panel-color', COLOR_OPTIONS, state.colorScheme, onColorChange);
     dropdown.appendChild(colorGroup);
+
+    var effectsLabel = document.createElement('div');
+    effectsLabel.className = 'settings-panel__group-label';
+    effectsLabel.textContent = 'Effects';
+    dropdown.appendChild(effectsLabel);
+
+    var effectsGroup = document.createElement('div');
+    effectsGroup.className = 'settings-panel__group';
+    effectsGroup.appendChild(buildCheckboxRow('Matrix background', state.matrixBg, onMatrixBgChange));
+    dropdown.appendChild(effectsGroup);
 
     container.appendChild(dropdown);
 
@@ -196,6 +227,22 @@
     savePrefs({ colorScheme: value });
   }
 
+  function onMatrixBgChange(value) {
+    state.matrixBg = value;
+
+    if (window.MatrixBG) {
+      if (window.MatrixBG.isEnabled() !== value) {
+        window.MatrixBG.toggle();
+      }
+      state.matrixBg = window.MatrixBG.isEnabled();
+    }
+
+    if (state.matrixInput) {
+      state.matrixInput.checked = state.matrixBg;
+    }
+    savePrefs({ matrixBg: state.matrixBg });
+  }
+
   // ---------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------
@@ -208,6 +255,7 @@
     var prefs = loadPrefs();
     state.visualStyle = isValidOption(STYLE_OPTIONS, prefs.visualStyle) ? prefs.visualStyle : DEFAULT_STYLE;
     state.colorScheme = isValidOption(COLOR_OPTIONS, prefs.colorScheme) ? prefs.colorScheme : DEFAULT_COLOR;
+    state.matrixBg = prefs.matrixBg === true;
 
     state.container = container;
     buildDom(container);
