@@ -1933,3 +1933,28 @@ main {
   box-shadow: 0 0 calc(var(--dm-cell) * 0.22) var(--glow);
   transform: translate(-50%, -50%);
 }
+
+/* ===== ASCII figlet fonts ===== */
+
+.segment-display {
+  --af-font-size: calc(var(--cell-size) * 0.92);
+}
+
+.af-row {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--digit-gap);
+}
+
+.af-glyph {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--af-font-size);
+  font-variant-ligatures: none;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+  text-shadow: 0 0 calc(var(--cell-size) * 0.5) var(--glow);
+}

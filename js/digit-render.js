@@ -6,9 +6,29 @@
 (function () {
   'use strict';
 
+  function asciiFontKey(style) {
+    if (typeof style !== 'string' || style.indexOf('afont-') !== 0) {
+      return null;
+    }
+
+    var fontKey = style.slice('afont-'.length);
+    if (!fontKey) {
+      return null;
+    }
+
+    if (!window.AsciiFont || !window.AsciiFont.FONTS) {
+      return fontKey;
+    }
+
+    return Object.prototype.hasOwnProperty.call(window.AsciiFont.FONTS, fontKey) ? fontKey : null;
+  }
+
   function activeRenderer() {
     var style = document.documentElement.dataset.style;
     if (style === 'block-stack' || style === 'dash' || style === 'dot-matrix') {
+      return style;
+    }
+    if (asciiFontKey(style) !== null) {
       return style;
     }
     return 'segment';
@@ -20,6 +40,7 @@
     container._bsState = null;
     container._dashState = null;
     container._dmState = null;
+    container._afState = null;
   }
 
   function renderDigits(container, str) {
@@ -54,6 +75,14 @@
         throw new Error('renderDigits: DotMatrixFont renderer is not available');
       }
       window.DotMatrixFont.renderDotMatrixString(container, str);
+      return;
+    }
+
+    if (renderer.indexOf('afont-') === 0) {
+      if (!window.AsciiFont || typeof window.AsciiFont.render !== 'function') {
+        throw new Error('renderDigits: AsciiFont renderer is not available');
+      }
+      window.AsciiFont.render(container, str, renderer.slice('afont-'.length));
       return;
     }
 

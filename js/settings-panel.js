@@ -29,6 +29,9 @@
     { value: 'glitch', label: 'Block 3D' },
     { value: 'block-stack', label: 'Block Stack' },
     { value: 'dash', label: 'Dash' },
+    { value: 'afont-standard', label: 'Figlet: Standard' },
+    { value: 'afont-big', label: 'Figlet: Big' },
+    { value: 'afont-banner', label: 'Figlet: Banner' },
     { value: 'dot-matrix', label: 'Dot Matrix' }
   ];
 
