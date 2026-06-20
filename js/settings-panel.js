@@ -25,7 +25,8 @@
     { value: 'flat', label: 'Flat' },
     { value: '3d', label: '3D' },
     { value: 'crt', label: 'CRT' },
-    { value: 'glitch', label: 'Block 3D' }
+    { value: 'glitch', label: 'Block 3D' },
+    { value: 'block-stack', label: 'Block Stack' }
   ];
 
   var COLOR_OPTIONS = [

@@ -15,7 +15,7 @@
 //   ClockView.tick()
 //     - Meant to be called roughly once per second by app.js's central tick
 //       loop. Computes "now" in the selected timezone, formats it per the
-//       current format mode, and renders it via renderSegmentString.
+//       current format mode, and renders it via renderDigits.
 //     - Safe to call before init() (no-ops if not yet initialized).
 //
 // Persistence: reads/writes the 'prefs' object in Storage, merging with
@@ -141,8 +141,9 @@
   }
 
   // Formats "now" in the given timezone according to formatMode. Returns an
-  // uppercase string ready for renderSegmentString (digits, A-Z, ':', '.',
-  // and space are all the glyphs segment-display supports).
+  // uppercase string ready for the active digit renderer. The segment
+  // renderer supports digits, A-Z, ':', '.', and space; alternate renderers
+  // may support a narrower glyph set.
   function formatNow(formatMode, timezone) {
     var parts12 = getParts(timezone);
     var parts24 = get24Parts(timezone);
@@ -403,7 +404,7 @@
       return;
     }
     var str = formatNow(state.formatMode, state.timezone);
-    window.renderSegmentString(state.displayMount, str);
+    window.renderDigits(state.displayMount, str);
   }
 
   // ---------------------------------------------------------------------

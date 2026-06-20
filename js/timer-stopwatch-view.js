@@ -374,7 +374,7 @@
       }
 
       var str = formatDuration(displayMsFor(timer));
-      renderSegmentString(record.display, str);
+      window.renderDigits(record.display, str);
 
       var label = statusLabel(timer);
       if (record.statusEl.textContent !== label) {
@@ -393,13 +393,13 @@
       els.focusedSubtitle.hidden = !focusedTimer.subtitle;
       els.focusedLabel.textContent = focusedTimer.name + ' — ' + statusLabel(focusedTimer);
       var focusedStr = formatDuration(displayMsFor(focusedTimer));
-      renderSegmentString(els.focusedDisplay, focusedStr);
+      window.renderDigits(els.focusedDisplay, focusedStr);
     } else {
       els.focusedTitle.textContent = 'No stopwatch selected';
       els.focusedSubtitle.textContent = '';
       els.focusedSubtitle.hidden = true;
       els.focusedLabel.textContent = '';
-      renderSegmentString(els.focusedDisplay, '--:--:--');
+      window.renderDigits(els.focusedDisplay, '--:--:--');
     }
   }
 

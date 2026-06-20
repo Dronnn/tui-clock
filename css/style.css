@@ -1776,3 +1776,98 @@ main {
   transform: translate(calc(var(--cell-size) * 0.4), calc(var(--cell-size) * 0.4));
   opacity: 0.55;
 }
+
+/* ===== Block Stack font ===== */
+
+.segment-display {
+  --bs-cell: calc(var(--cell-size) * 0.56);
+  --bs-shadow-step: calc(var(--bs-cell) * 0.18);
+  --bs-shadow-depth: calc(var(--bs-shadow-step) * 3);
+  --bs-outline-width: 1.5px;
+}
+
+.bs-glyph {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: calc((var(--bs-cell) * var(--bs-cols)) + var(--bs-shadow-depth));
+  height: calc((var(--bs-cell) * 7) + var(--bs-shadow-depth));
+  border-radius: 0;
+}
+
+.bs-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--bs-cols), var(--bs-cell));
+  grid-template-rows: repeat(7, var(--bs-cell));
+  gap: 0;
+  width: calc(var(--bs-cell) * var(--bs-cols));
+  height: calc(var(--bs-cell) * 7);
+  pointer-events: none;
+}
+
+.bs-cell {
+  width: var(--bs-cell);
+  height: var(--bs-cell);
+  background: transparent;
+  border: 0 solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.bs-solid {
+  z-index: 4;
+}
+
+.bs-on {
+  background: var(--fg);
+  box-shadow: 0 0 calc(var(--bs-cell) * 0.25) var(--glow);
+}
+
+.bs-shadow {
+  background: transparent;
+}
+
+.bs-shadow-1 {
+  z-index: 3;
+  opacity: 0.82;
+  transform: translate(var(--bs-shadow-step), var(--bs-shadow-step));
+}
+
+.bs-shadow-2 {
+  z-index: 2;
+  opacity: 0.62;
+  transform: translate(calc(var(--bs-shadow-step) * 2), calc(var(--bs-shadow-step) * 2));
+}
+
+.bs-shadow-3 {
+  z-index: 1;
+  opacity: 0.42;
+  transform: translate(calc(var(--bs-shadow-step) * 3), calc(var(--bs-shadow-step) * 3));
+}
+
+.bs-outline {
+  background: transparent;
+}
+
+.bs-edge-top {
+  border-top-color: var(--fg);
+  border-top-width: var(--bs-outline-width);
+}
+
+.bs-edge-right {
+  border-right-color: var(--fg);
+  border-right-width: var(--bs-outline-width);
+}
+
+.bs-edge-bottom {
+  border-bottom-color: var(--fg);
+  border-bottom-width: var(--bs-outline-width);
+}
+
+.bs-edge-left {
+  border-left-color: var(--fg);
+  border-left-width: var(--bs-outline-width);
+}

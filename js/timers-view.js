@@ -449,7 +449,7 @@
 
       var ms = displayMsFor(timer);
       var str = formatDuration(ms);
-      renderSegmentString(record.display, str);
+      window.renderDigits(record.display, str);
 
       var done = TimerModel.isDone(timer);
       var label = statusLabel(timer);
@@ -488,7 +488,7 @@
       els.focusedSubtitle.hidden = !focusedTimer.subtitle;
       els.focusedLabel.textContent = focusedTimer.name + ' — ' + statusLabel(focusedTimer);
       var focusedStr = formatDuration(displayMsFor(focusedTimer));
-      renderSegmentString(els.focusedDisplay, focusedStr);
+      window.renderDigits(els.focusedDisplay, focusedStr);
       var focusedDone = TimerModel.isDone(focusedTimer);
       if (focusedDone) {
         Notify.flash(els.focusedDisplay, { duration: 0 });
@@ -500,7 +500,7 @@
       els.focusedSubtitle.textContent = '';
       els.focusedSubtitle.hidden = true;
       els.focusedLabel.textContent = '';
-      renderSegmentString(els.focusedDisplay, '--:--:--');
+      window.renderDigits(els.focusedDisplay, '--:--:--');
       Notify.stopFlash(els.focusedDisplay);
     }
   }
