@@ -42,7 +42,10 @@
   var MIN_CELL_SIZE = 6;
   var MAX_CELL_SIZE = 16;
 
+  var FOCUSED_DISPLAY_SELECTOR = '.clock-view__display, .timers-view__focused-display, .timer-stopwatch-view__focused-display';
+
   var resizeRaf = null;
+  var styleRaf = null;
 
   // Mode names map 1:1 to hotkeys and to MODE_LABELS below. 'timer' is the
   // stopwatch mode (#view-timer-mode); 'timers' (plural, matching the
@@ -59,6 +62,101 @@
     window.TimersView.tick();
     window.TimerStopwatchView.tick();
     window.AlarmCorner.tick();
+    fitDisplays();
+  }
+
+  function readPixelValue(value) {
+    var parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  function horizontalMainPadding() {
+    var main = document.querySelector('main');
+    if (!main) {
+      return 0;
+    }
+    var styles = getComputedStyle(main);
+    return readPixelValue(styles.paddingLeft) + readPixelValue(styles.paddingRight);
+  }
+
+  function verticalPadding(el) {
+    var styles = getComputedStyle(el);
+    return readPixelValue(styles.paddingTop) + readPixelValue(styles.paddingBottom);
+  }
+
+  function clearDisplayFit(display) {
+    if (!display) {
+      return;
+    }
+    display._fitScale = null;
+    display.style.transform = '';
+    display.style.transformOrigin = '';
+  }
+
+  function clearInactiveDisplayFits(activeDisplay) {
+    var displays = document.querySelectorAll(FOCUSED_DISPLAY_SELECTOR);
+    for (var i = 0; i < displays.length; i++) {
+      if (displays[i] !== activeDisplay) {
+        clearDisplayFit(displays[i]);
+      }
+    }
+  }
+
+  function measureNaturalSize(display) {
+    var previousTransform = display.style.transform;
+    display.style.transform = 'none';
+
+    var width = display.scrollWidth;
+    var height = display.scrollHeight;
+
+    if ((!width || !height) && typeof display.getBoundingClientRect === 'function') {
+      var rect = display.getBoundingClientRect();
+      width = width || rect.width;
+      height = height || rect.height;
+    }
+
+    display.style.transform = previousTransform;
+    return { width: width, height: height };
+  }
+
+  function fitDisplays() {
+    var pane = document.querySelector('.pane--focused');
+    var display = pane ? pane.querySelector(FOCUSED_DISPLAY_SELECTOR) : null;
+    clearInactiveDisplayFits(display);
+
+    if (!pane || !display) {
+      return;
+    }
+
+    var natural = measureNaturalSize(display);
+    if (!natural.width || !natural.height) {
+      return;
+    }
+
+    var paneRect = pane.getBoundingClientRect();
+    var availableWidth = window.innerWidth - horizontalMainPadding();
+    var availableHeight = paneRect.height - verticalPadding(pane);
+
+    if (!availableWidth || availableWidth < 1) {
+      availableWidth = paneRect.width || window.innerWidth;
+    }
+    if (!availableHeight || availableHeight < 1) {
+      availableHeight = paneRect.height || window.innerHeight;
+    }
+
+    var scale = Math.min(1, availableWidth / natural.width, availableHeight / natural.height);
+    if (!isFinite(scale) || scale <= 0) {
+      scale = 1;
+    }
+
+    var scaleKey = scale.toFixed(4);
+    if (display._fitScale === scaleKey) {
+      return;
+    }
+
+    display._fitScale = scaleKey;
+    display.style.transformOrigin = 'center center';
+    display.style.transform = scale < 1 ? 'scale(' + scaleKey + ')' : '';
   }
 
   // Recomputes --root-cell-size from the current viewport so the big Clock
@@ -83,6 +181,28 @@
     resizeRaf = requestAnimationFrame(function () {
       resizeRaf = null;
       updateCellSize();
+      fitDisplays();
+    });
+  }
+
+  function onStyleAttributeChange() {
+    if (styleRaf !== null) {
+      return;
+    }
+    styleRaf = requestAnimationFrame(function () {
+      styleRaf = null;
+      tickAll();
+    });
+  }
+
+  function observeStyleChanges() {
+    if (typeof MutationObserver !== 'function') {
+      return;
+    }
+    var observer = new MutationObserver(onStyleAttributeChange);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-style']
     });
   }
 
@@ -140,6 +260,7 @@
       modeIndicatorEl.innerHTML = label + ' <span class="app-header__hint">(C/D/T to switch)</span>';
     }
     savePrefs({ activeMode: modeName });
+    fitDisplays();
   }
 
   function onModeKeyDown(event) {
@@ -181,6 +302,7 @@
     window.TimerStopwatchView.init(timerModeContainer);
     window.AlarmCorner.init(document.getElementById('alarm-corner'));
     window.SettingsPanel.init(document.getElementById('settings-panel'));
+    observeStyleChanges();
 
     document.addEventListener('keydown', onModeKeyDown);
 
@@ -205,6 +327,7 @@
     // needed for responsive segment sizing; centering itself is pure CSS
     // (flex + viewport units) and recalculates on its own.
     updateCellSize();
+    fitDisplays();
     window.addEventListener('resize', onResize);
   }
 

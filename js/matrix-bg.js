@@ -9,8 +9,9 @@
   var FONT_SIZE = 18;
   var TRAIL_LENGTH = 16;
   var FRAME_INTERVAL_MS = 1000 / 24;
-  var TRAIL_ALPHA = 0.42;
-  var HEAD_ALPHA = 0.72;
+  var TRAIL_ALPHA = 0.16;
+  var HEAD_ALPHA = 0.48;
+  var CANVAS_OPACITY = 0.32;
 
   var canvas = null;
   var ctx = null;
@@ -34,6 +35,7 @@
     canvas.style.zIndex = '-1';
     canvas.style.pointerEvents = 'none';
     canvas.style.display = 'none';
+    canvas.style.opacity = String(CANVAS_OPACITY);
 
     document.body.appendChild(canvas);
   }
