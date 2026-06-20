@@ -15,6 +15,8 @@
 //       (AlarmModel.checkDue), guarding re-fire within the same minute via
 //       an in-memory map, and refreshes the resting "next alarm" text only
 //       when it actually changes.
+//   AlarmCorner.open()
+//     - Programmatically opens the same popover as the resting widget.
 //
 // Firing/dedup approach mirrors the old alarms-view: a module-level
 // `lastFiredMinute` map (alarmId -> "HH:MM") kept in memory only, plus a
@@ -407,6 +409,14 @@
   // Public API
   // ---------------------------------------------------------------------
 
+  function open() {
+    if (!els) {
+      return;
+    }
+    renderList();
+    openPopover();
+  }
+
   function init(container) {
     if (!container) {
       throw new Error('AlarmCorner.init: container element is required');
@@ -509,6 +519,7 @@
 
   window.AlarmCorner = {
     init: init,
+    open: open,
     tick: tick
   };
 })();

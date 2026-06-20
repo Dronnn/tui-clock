@@ -18,6 +18,7 @@
 //     and compact rendering), and updates the header's mode-indicator text.
 //     Triggered by C/D/T keydown (Clock/Countdown/Timer), ignored while
 //     typing in an input/textarea/select or while a modifier key is held.
+//     The same guarded keydown path opens the alarm corner popover on A.
 //     Last-active mode is persisted to Storage's 'prefs' object and restored
 //     on boot (default: 'clock').
 //   - A single setInterval(250ms) calls ClockView.tick(), TimersView.tick(),
@@ -150,7 +151,12 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
       return;
     }
-    var modeName = MODE_KEYS[event.key.toLowerCase()];
+    var keyName = event.key.toLowerCase();
+    if (keyName === 'a') {
+      window.AlarmCorner.open();
+      return;
+    }
+    var modeName = MODE_KEYS[keyName];
     if (!modeName) {
       return;
     }
