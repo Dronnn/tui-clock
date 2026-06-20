@@ -48,8 +48,14 @@
     displayMount: null,
     formatButton: null,
     timezoneSelect: null,
+    titleInput: null,
+    subtitleInput: null,
+    titleEl: null,
+    subtitleEl: null,
     formatMode: FORMAT_MODES[0],
-    timezone: LOCAL_ZONE
+    timezone: LOCAL_ZONE,
+    title: '',
+    subtitle: ''
   };
 
   // ---------------------------------------------------------------------
@@ -249,13 +255,21 @@
   function buildDom(container) {
     container.innerHTML = '';
 
+    var titleEl = document.createElement('div');
+    titleEl.className = 'clock-view__title';
+
     var frame = buildViewfinderFrame();
 
     var displayMount = document.createElement('div');
     displayMount.className = 'segment-display clock-view__display';
     frame.appendChild(displayMount);
 
+    var subtitleEl = document.createElement('div');
+    subtitleEl.className = 'clock-view__subtitle';
+
+    container.appendChild(titleEl);
     container.appendChild(frame);
+    container.appendChild(subtitleEl);
 
     var controls = document.createElement('div');
     controls.className = 'clock-view__controls';
@@ -274,11 +288,35 @@
     timezoneLabel.appendChild(timezoneSelect);
     controls.appendChild(timezoneLabel);
 
+    var titleFieldLabel = document.createElement('label');
+    titleFieldLabel.className = 'clock-view__field-label';
+    titleFieldLabel.textContent = 'TITLE:';
+    var titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.className = 'clock-view__text-input';
+    titleInput.placeholder = 'e.g. NEXT STREAM';
+    titleFieldLabel.appendChild(titleInput);
+    controls.appendChild(titleFieldLabel);
+
+    var subtitleFieldLabel = document.createElement('label');
+    subtitleFieldLabel.className = 'clock-view__field-label';
+    subtitleFieldLabel.textContent = 'SUBTITLE:';
+    var subtitleInput = document.createElement('input');
+    subtitleInput.type = 'text';
+    subtitleInput.className = 'clock-view__text-input';
+    subtitleInput.placeholder = 'e.g. starting soon';
+    subtitleFieldLabel.appendChild(subtitleInput);
+    controls.appendChild(subtitleFieldLabel);
+
     container.appendChild(controls);
 
     state.displayMount = displayMount;
     state.formatButton = formatButton;
     state.timezoneSelect = timezoneSelect;
+    state.titleInput = titleInput;
+    state.subtitleInput = subtitleInput;
+    state.titleEl = titleEl;
+    state.subtitleEl = subtitleEl;
   }
 
   // ---------------------------------------------------------------------
@@ -298,6 +336,33 @@
     state.timezone = state.timezoneSelect.value;
     savePrefs({ timezone: state.timezone });
     renderNow();
+  }
+
+  function onTitleInput() {
+    state.title = state.titleInput.value;
+    savePrefs({ clockTitle: state.title });
+    renderLabels();
+  }
+
+  function onSubtitleInput() {
+    state.subtitle = state.subtitleInput.value;
+    savePrefs({ clockSubtitle: state.subtitle });
+    renderLabels();
+  }
+
+  // Renders the free-text title (above) and subtitle (below) the digits,
+  // hiding each element when its text is empty.
+  function renderLabels() {
+    if (!state.titleEl || !state.subtitleEl) {
+      return;
+    }
+    var title = (state.title || '').trim();
+    state.titleEl.textContent = title;
+    state.titleEl.style.display = title ? '' : 'none';
+
+    var subtitle = (state.subtitle || '').trim();
+    state.subtitleEl.textContent = subtitle;
+    state.subtitleEl.style.display = subtitle ? '' : 'none';
   }
 
   // Reasonable self-contained "is this view currently the big, focused
@@ -353,6 +418,8 @@
     var prefs = loadPrefs();
     state.formatMode = FORMAT_MODES.indexOf(prefs.clockFormat) !== -1 ? prefs.clockFormat : FORMAT_MODES[0];
     state.timezone = typeof prefs.timezone === 'string' ? prefs.timezone : LOCAL_ZONE;
+    state.title = typeof prefs.clockTitle === 'string' ? prefs.clockTitle : '';
+    state.subtitle = typeof prefs.clockSubtitle === 'string' ? prefs.clockSubtitle : '';
 
     state.container = container;
     buildDom(container);
@@ -363,9 +430,15 @@
     buildTimezoneOptions(state.timezoneSelect, state.timezone);
     state.timezoneSelect.addEventListener('change', onTimezoneChange);
 
+    state.titleInput.value = state.title;
+    state.subtitleInput.value = state.subtitle;
+    state.titleInput.addEventListener('input', onTitleInput);
+    state.subtitleInput.addEventListener('input', onSubtitleInput);
+
     document.addEventListener('keydown', onKeyDown);
 
     state.initialized = true;
+    renderLabels();
     renderNow();
   }
 

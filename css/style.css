@@ -254,6 +254,85 @@ main {
   margin-bottom: 1rem;
 }
 
+/* Free-text title above the digits: small, uppercase, letter-spaced, themed
+   accent, with a short divider line beneath it (the ::after rule). */
+.clock-view__title {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px var(--glow);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.clock-view__title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3.5rem;
+  height: 1px;
+  background: var(--fg-muted);
+}
+
+/* Free-text subtitle below the digits: larger, bold, themed. */
+.clock-view__subtitle {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px var(--glow);
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.clock-view__field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clock-view__text-input {
+  appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  width: 11rem;
+}
+
+.clock-view__text-input:focus {
+  outline: none;
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+/* Scale labels down in the minor (small) clock widget so they don't
+   overpower the shrunken digits. */
+.pane--minor .clock-view__title {
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
+}
+
+.pane--minor .clock-view__subtitle {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
 .clock-view__controls {
   display: flex;
   align-items: center;
@@ -1613,28 +1692,87 @@ main {
   box-shadow: inset calc(var(--cell-size) * 0.06) calc(var(--cell-size) * 0.06) calc(var(--cell-size) * 0.1) rgba(0, 0, 0, 0.55);
 }
 
-/* "glitch": crisp rectangular cyberpunk segments — solid sharp-cornered
-   --fg blocks plus two hard-edged offset outline copies (one in --fg, one
-   in --glow) shifted a few px to create the layered glitch outline. */
-[data-style='glitch'] .sd-cell {
+/* "glitch" (labelled "Block 3D" in settings): bold chunky SOLID blocks with a
+   stacked offset wireframe outline trailing down-and-right, giving an extruded
+   stacked-block 3D look rather than a thin 7-segment skeleton.
+
+   Two parts:
+   1. THICK segments — the digit grid is overridden ONLY here so horizontal
+      bars are tall and vertical strokes are wide (segments ~40% of the
+      digit's short dimension), so adjacent lit blocks nearly merge into a
+      solid digit.
+   2. OFFSET WIREFRAME SHADOW — each lit cell's ::before and ::after are
+      same-size hollow boxes (transparent fill, 1.5px --fg border) stepped
+      +0.18/+0.36 of a cell down-right, sitting BEHIND the solid white face. */
+
+/* Part 1: chunky grid. Horizontal bars (a,g,d) get a tall middle row; the
+   vertical strokes (f,b,e,c) get wide columns. We widen the columns and
+   compress the tall rows relative to the default skeleton grid. */
+[data-style='glitch'] .sd-digit {
+  grid-template-columns: calc(var(--cell-size) * 1.5) calc(var(--cell-size) * 1.5);
+  grid-template-rows:
+    calc(var(--cell-size) * 1.5)
+    calc(var(--cell-size) * 1.6)
+    calc(var(--cell-size) * 1.5)
+    calc(var(--cell-size) * 1.6)
+    calc(var(--cell-size) * 1.5);
+  gap: calc(var(--cell-size) * 0.12);
+  width: calc(var(--cell-size) * 3 + var(--cell-size) * 0.12);
+}
+
+/* Colon/period punct digit: match the chunky digit's row heights so the
+   dots line up with the fat blocks beside them. */
+[data-style='glitch'] .sd-digit-punct {
+  grid-template-rows:
+    calc(var(--cell-size) * 1.5)
+    calc(var(--cell-size) * 1.6)
+    calc(var(--cell-size) * 1.5)
+    calc(var(--cell-size) * 1.6)
+    calc(var(--cell-size) * 1.5);
+  gap: calc(var(--cell-size) * 0.12);
+  width: calc(var(--cell-size) * 1.5);
+}
+
+[data-style='glitch'] .sd-dot {
+  width: calc(var(--cell-size) * 1.5);
+  height: calc(var(--cell-size) * 1.5);
   border-radius: 0;
 }
 
+[data-style='glitch'] .sd-cell {
+  position: relative;
+  border-radius: 0;
+}
+
+/* Solid white-bright face on top. */
 [data-style='glitch'] .sd-cell.on {
   background: var(--fg);
   border-radius: 0;
-  box-shadow:
-    /* offset hard outline copy #1 (down-right) in --fg */
-    calc(var(--cell-size) * 0.22) calc(var(--cell-size) * 0.22) 0 0 var(--fg),
-    /* offset hard outline copy #2 (up-left) in --glow */
-    calc(var(--cell-size) * -0.18) calc(var(--cell-size) * -0.18) 0 0 var(--glow),
-    /* tight glow to keep it readable */
-    0 0 calc(var(--cell-size) * 0.4) var(--glow);
+  z-index: 2;
+  box-shadow: 0 0 calc(var(--cell-size) * 0.3) var(--glow);
 }
 
-/* Make the offset copies read as border-only outlines rather than solid
-   fills: a contrasting inset knocks out their centre so only the rim shows. */
-[data-style='glitch'] .sd-cell.on {
-  outline: 1px solid var(--fg);
-  outline-offset: 0;
+/* Stacked offset wireframe outlines behind the solid face. */
+[data-style='glitch'] .sd-cell.on::before,
+[data-style='glitch'] .sd-cell.on::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  border: 1.5px solid var(--fg);
+  z-index: -1;
+  pointer-events: none;
+}
+
+[data-style='glitch'] .sd-cell.on::before {
+  transform: translate(calc(var(--cell-size) * 0.2), calc(var(--cell-size) * 0.2));
+  opacity: 0.85;
+}
+
+[data-style='glitch'] .sd-cell.on::after {
+  transform: translate(calc(var(--cell-size) * 0.4), calc(var(--cell-size) * 0.4));
+  opacity: 0.55;
 }
