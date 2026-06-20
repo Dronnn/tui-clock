@@ -57,10 +57,7 @@
     window.ClockView.tick();
     window.TimersView.tick();
     window.TimerStopwatchView.tick();
-    // TODO: alarm corner widget will replace this. AlarmsView.init() is no
-    // longer called (no #view-alarms container to mount into), so its tick()
-    // is skipped here too rather than calling tick() on an uninitialized view.
-    // window.AlarmsView.tick();
+    window.AlarmCorner.tick();
   }
 
   // Recomputes --root-cell-size from the current viewport so the big Clock
@@ -176,10 +173,7 @@
     window.ClockView.init(clockContainer);
     window.TimersView.init(timersContainer);
     window.TimerStopwatchView.init(timerModeContainer);
-    // TODO: alarm corner widget will replace this. #view-alarms was removed
-    // from index.html, so there is no container left to mount AlarmsView
-    // into; a later step builds the alarm corner widget and wires it up.
-    // window.AlarmsView.init(document.getElementById('view-alarms'));
+    window.AlarmCorner.init(document.getElementById('alarm-corner'));
     window.SettingsPanel.init(document.getElementById('settings-panel'));
 
     document.addEventListener('keydown', onModeKeyDown);

@@ -3,12 +3,15 @@
 // storage.js, decoupled from any rendering concerns. Plain global script,
 // no ES modules — exposes window.AlarmModel.
 //
-// Alarm shape: { id, time, days[], enabled }
-//   id:      string, unique per alarm (see makeId below).
-//   time:    "HH:MM" 24-hour string, e.g. "07:30".
-//   days[]:  array of weekday indices 0=Sun..6=Sat the alarm repeats on.
-//            Defaults to all 7 days ([0,1,2,3,4,5,6]) unless customized.
-//   enabled: boolean, whether the alarm is currently armed.
+// Alarm shape: { id, time, days[], enabled, title, subtitle }
+//   id:       string, unique per alarm (see makeId below).
+//   time:     "HH:MM" 24-hour string, e.g. "07:30".
+//   days[]:   array of weekday indices 0=Sun..6=Sat the alarm repeats on.
+//             Defaults to all 7 days ([0,1,2,3,4,5,6]) unless customized.
+//   enabled:  boolean, whether the alarm is currently armed.
+//   title:    optional string label shown on the alarm + in its notification
+//             (default '').
+//   subtitle: optional string sub-label / notification body (default '').
 //
 // Public API:
 //   AlarmModel.create({ time, days, enabled })
@@ -111,11 +114,16 @@
 
     var enabled = opts.enabled === undefined ? true : Boolean(opts.enabled);
 
+    var title = opts.title === undefined || opts.title === null ? '' : String(opts.title);
+    var subtitle = opts.subtitle === undefined || opts.subtitle === null ? '' : String(opts.subtitle);
+
     var alarm = {
       id: makeId(),
       time: time,
       days: days,
-      enabled: enabled
+      enabled: enabled,
+      title: title,
+      subtitle: subtitle
     };
 
     var alarms = loadAll();
@@ -160,11 +168,21 @@
       ? Boolean(patch.enabled)
       : current.enabled;
 
+    var nextTitle = Object.prototype.hasOwnProperty.call(patch, 'title')
+      ? (patch.title === undefined || patch.title === null ? '' : String(patch.title))
+      : (current.title || '');
+
+    var nextSubtitle = Object.prototype.hasOwnProperty.call(patch, 'subtitle')
+      ? (patch.subtitle === undefined || patch.subtitle === null ? '' : String(patch.subtitle))
+      : (current.subtitle || '');
+
     var updated = {
       id: current.id,
       time: nextTime,
       days: nextDays,
-      enabled: nextEnabled
+      enabled: nextEnabled,
+      title: nextTitle,
+      subtitle: nextSubtitle
     };
 
     alarms[index] = updated;

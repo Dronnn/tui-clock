@@ -24,7 +24,8 @@
   var STYLE_OPTIONS = [
     { value: 'flat', label: 'Flat' },
     { value: '3d', label: '3D' },
-    { value: 'crt', label: 'CRT' }
+    { value: 'crt', label: 'CRT' },
+    { value: 'glitch', label: 'Glitch' }
   ];
 
   var COLOR_OPTIONS = [

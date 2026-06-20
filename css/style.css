@@ -991,15 +991,8 @@ main {
    the unscoped base styles above already produce that look.
    -------------------------------------------------------------------- */
 
-/* "3d": lit segments look raised/extruded — a beveled gradient face,
-   a brighter top-edge glow, and a directional drop shadow offset
-   down-right to suggest a physically raised block. */
-[data-style='3d'] .sd-cell.on {
-  background: linear-gradient(135deg, var(--fg) 0%, var(--fg) 55%, var(--fg-muted) 100%);
-  box-shadow:
-    0 0 calc(var(--cell-size) * 0.6) var(--glow),
-    calc(var(--cell-size) * 0.12) calc(var(--cell-size) * 0.18) calc(var(--cell-size) * 0.25) rgba(0, 0, 0, 0.55);
-}
+/* "3d" extrusion + "glitch" rules live in the dedicated block at the end of
+   this file (search "Style: 3D extrusion (revised) + Glitch"). */
 
 /* "crt": keep the flat-glow base look, but overlay scanlines + a subtle
    vignette on every segment-display instance (clock + timer rows/focused
@@ -1271,4 +1264,377 @@ main {
   right: 0;
   border-bottom: 2px solid var(--border);
   border-right: 2px solid var(--border);
+}
+
+/* ===== Alarm corner widget ===== */
+
+.alarm-corner {
+  /* #alarm-corner is already position: fixed bottom-right (see mount-point
+     rule above); this just establishes it as the popover anchor + flex box. */
+  display: flex;
+  align-items: flex-end;
+}
+
+.alarm-corner__button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  padding: 0.4rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarm-corner__button:hover,
+.alarm-corner__button.is-active {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarm-corner__bell {
+  font-size: 1rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px var(--glow));
+}
+
+.alarm-corner__next {
+  color: var(--fg);
+  letter-spacing: 0.06em;
+}
+
+.alarm-corner__next.is-empty {
+  color: var(--fg-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+/* Popover: anchored to the widget's bottom-right, opening upward + leftward
+   so it always stays on-screen from the bottom-right corner. */
+.alarm-corner__popover {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 30;
+  display: none;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 22rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: 0 0 18px var(--glow);
+}
+
+.alarm-corner__popover.is-open {
+  display: flex;
+}
+
+.alarm-corner__heading {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.alarm-corner__new-toggle {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarm-corner__new-toggle:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarm-corner__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.alarm-corner__form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.alarm-corner__form-label--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alarm-corner__time-input,
+.alarm-corner__text-input {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+}
+
+.alarm-corner__time-input:focus,
+.alarm-corner__text-input:focus {
+  outline: none;
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarm-corner__day-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.alarm-corner__day-chip {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
+}
+
+.alarm-corner__day-chip.is-active {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarm-corner__day-chip:hover {
+  border-color: var(--fg-muted);
+}
+
+.alarm-corner__form-error {
+  color: var(--fg);
+  background: rgba(255, 80, 0, 0.12);
+  border: 1px solid rgba(255, 80, 0, 0.45);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.alarm-corner__form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.alarm-corner__form-submit,
+.alarm-corner__form-cancel {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarm-corner__form-submit:hover,
+.alarm-corner__form-cancel:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarm-corner__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.alarm-corner__empty {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.alarm-corner__row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+}
+
+.alarm-corner__row.is-disabled {
+  opacity: 0.5;
+}
+
+.alarm-corner__row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.alarm-corner__row-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.alarm-corner__row-time {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.alarm-corner__row-days {
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.alarm-corner__row-title {
+  color: var(--fg);
+  font-size: 0.8rem;
+}
+
+.alarm-corner__row-subtitle {
+  color: var(--fg-muted);
+  font-size: 0.72rem;
+}
+
+.alarm-corner__row-toggle {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 2.6rem;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
+}
+
+.alarm-corner__row-toggle.is-on {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarm-corner__row-toggle:hover {
+  border-color: var(--fg-muted);
+}
+
+.alarm-corner__row-delete {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarm-corner__row-delete:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+/* ===== Style: 3D extrusion (revised) + Glitch ===== */
+
+/* "3d": a genuinely extruded/embossed segment. Stacked layered box-shadows
+   in --fg of decreasing brightness fake an extruded SIDE wall pushing the
+   face up off the board; a dark cast shadow offset down-right grounds it;
+   a bright inner top-left highlight + brighter face sell the raised look.
+   All offsets/blurs scale with --cell-size so it holds at every size, and
+   every color is driven by --fg/--glow so it themes correctly. */
+[data-style='3d'] .sd-cell.on {
+  background: var(--fg);
+  border-radius: 1px;
+  box-shadow:
+    /* extruded side wall: layered --fg copies fading down-right */
+    calc(var(--cell-size) * 0.05) calc(var(--cell-size) * 0.05) 0 0 var(--fg),
+    calc(var(--cell-size) * 0.10) calc(var(--cell-size) * 0.10) 0 0 var(--fg-muted),
+    calc(var(--cell-size) * 0.16) calc(var(--cell-size) * 0.16) 0 0 var(--fg-dim),
+    /* dark cast shadow grounding the block */
+    calc(var(--cell-size) * 0.30) calc(var(--cell-size) * 0.34) calc(var(--cell-size) * 0.30) rgba(0, 0, 0, 0.7),
+    /* top-left highlight + soft glow on the lit face */
+    inset calc(var(--cell-size) * 0.14) calc(var(--cell-size) * 0.14) calc(var(--cell-size) * 0.12) rgba(255, 255, 255, 0.45),
+    inset calc(var(--cell-size) * -0.10) calc(var(--cell-size) * -0.10) calc(var(--cell-size) * 0.14) rgba(0, 0, 0, 0.4),
+    0 0 calc(var(--cell-size) * 0.5) var(--glow);
+}
+
+/* Dim/off segments stay flat + recessed so the lit ones pop forward. */
+[data-style='3d'] .sd-cell {
+  border-radius: 1px;
+  box-shadow: inset calc(var(--cell-size) * 0.06) calc(var(--cell-size) * 0.06) calc(var(--cell-size) * 0.1) rgba(0, 0, 0, 0.55);
+}
+
+/* "glitch": crisp rectangular cyberpunk segments — solid sharp-cornered
+   --fg blocks plus two hard-edged offset outline copies (one in --fg, one
+   in --glow) shifted a few px to create the layered glitch outline. */
+[data-style='glitch'] .sd-cell {
+  border-radius: 0;
+}
+
+[data-style='glitch'] .sd-cell.on {
+  background: var(--fg);
+  border-radius: 0;
+  box-shadow:
+    /* offset hard outline copy #1 (down-right) in --fg */
+    calc(var(--cell-size) * 0.22) calc(var(--cell-size) * 0.22) 0 0 var(--fg),
+    /* offset hard outline copy #2 (up-left) in --glow */
+    calc(var(--cell-size) * -0.18) calc(var(--cell-size) * -0.18) 0 0 var(--glow),
+    /* tight glow to keep it readable */
+    0 0 calc(var(--cell-size) * 0.4) var(--glow);
+}
+
+/* Make the offset copies read as border-only outlines rather than solid
+   fills: a contrasting inset knocks out their centre so only the rim shows. */
+[data-style='glitch'] .sd-cell.on {
+  outline: 1px solid var(--fg);
+  outline-offset: 0;
 }
