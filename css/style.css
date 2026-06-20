@@ -118,8 +118,11 @@ main {
 .segment-display {
   display: inline-flex;
   align-items: flex-end;
+  flex: 0 0 auto;
   gap: var(--digit-gap);
-  padding: calc(var(--cell-size) * 0.8);
+  width: max-content;
+  max-width: none;
+  padding: calc(var(--cell-size) * 0.25);
 }
 
 .sd-digit {
@@ -260,6 +263,9 @@ main {
      reaches the clock's big display. 1.4x keeps the clock noticeably
      larger than the 10px root default, matching the original 14px look. */
   --cell-size: calc(var(--root-cell-size, 10px) * 1.4);
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
   margin-bottom: 1rem;
 }
 
@@ -433,6 +439,9 @@ main {
 
 .timers-view__focused-display {
   --cell-size: 18px;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
 }
 
 .timers-view__form {
@@ -635,6 +644,9 @@ main {
 
 .timer-stopwatch-view__focused-display {
   --cell-size: 18px;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
 }
 
 .timer-stopwatch-view__form {
@@ -1276,11 +1288,11 @@ main {
    the minor row reads clearly as "smaller than a list row". */
 .pane--minor .segment-display {
   --cell-size: 6px;
-  padding: calc(var(--cell-size) * 0.6);
+  padding: calc(var(--cell-size) * 0.2);
 }
 
 .pane--minor .viewfinder-frame {
-  padding: 0.6rem;
+  padding: 0.25rem;
 }
 
 .pane--minor .viewfinder-frame__corner {
@@ -1317,7 +1329,10 @@ main {
 .viewfinder-frame {
   position: relative;
   display: inline-flex;
-  padding: 1.75rem;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
+  padding: 0.4rem;
 }
 
 .viewfinder-frame__corner {
@@ -1946,7 +1961,10 @@ main {
 .af-row {
   display: inline-flex;
   align-items: flex-end;
+  flex: 0 0 auto;
   gap: var(--digit-gap);
+  width: max-content;
+  max-width: none;
 }
 
 .af-glyph {

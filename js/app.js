@@ -43,6 +43,14 @@
   var MAX_CELL_SIZE = 16;
 
   var FOCUSED_DISPLAY_SELECTOR = '.clock-view__display, .timers-view__focused-display, .timer-stopwatch-view__focused-display';
+  var CLOCK_FIT_TARGET_SELECTOR = '.viewfinder-frame';
+  var FIT_TARGET_SELECTOR = CLOCK_FIT_TARGET_SELECTOR + ', ' + FOCUSED_DISPLAY_SELECTOR;
+  var VIEWPORT_FIT_MARGIN_PX = 24;
+  // Shrink a touch more than the measured fit: monospace/figlet glyph ink
+  // renders slightly wider than its measured box, so without this the
+  // content can still spill past the edge.
+  var FIT_SAFETY = 0.9;
+  var MIN_FIT_CELL_SIZE = 2;
 
   var resizeRaf = null;
   var styleRaf = null;
@@ -70,15 +78,6 @@
     return isNaN(parsed) ? 0 : parsed;
   }
 
-  function horizontalMainPadding() {
-    var main = document.querySelector('main');
-    if (!main) {
-      return 0;
-    }
-    var styles = getComputedStyle(main);
-    return readPixelValue(styles.paddingLeft) + readPixelValue(styles.paddingRight);
-  }
-
   function verticalPadding(el) {
     var styles = getComputedStyle(el);
     return readPixelValue(styles.paddingTop) + readPixelValue(styles.paddingBottom);
@@ -94,7 +93,7 @@
   }
 
   function clearInactiveDisplayFits(activeDisplay) {
-    var displays = document.querySelectorAll(FOCUSED_DISPLAY_SELECTOR);
+    var displays = document.querySelectorAll(FIT_TARGET_SELECTOR);
     for (var i = 0; i < displays.length; i++) {
       if (displays[i] !== activeDisplay) {
         clearDisplayFit(displays[i]);
@@ -102,76 +101,104 @@
     }
   }
 
-  function measureNaturalSize(display) {
-    var previousTransform = display.style.transform;
-    display.style.transform = 'none';
+  function fitTargetForPane(pane) {
+    if (!pane) {
+      return null;
+    }
+    if (pane.id === 'view-clock') {
+      return pane.querySelector(CLOCK_FIT_TARGET_SELECTOR);
+    }
+    return pane.querySelector(FOCUSED_DISPLAY_SELECTOR);
+  }
 
-    var width = display.scrollWidth;
-    var height = display.scrollHeight;
+  // True rendered extent of the content, robust against the flex/overflow
+  // measurement traps that make scrollWidth/getBoundingClientRect under-
+  // report for the <pre>-based figlet rows: take the largest of scrollWidth,
+  // the element rect, and a DOM Range over its contents.
+  function measureContent(el) {
+    var width = el.scrollWidth || 0;
+    var height = el.scrollHeight || 0;
 
-    if ((!width || !height) && typeof display.getBoundingClientRect === 'function') {
-      var rect = display.getBoundingClientRect();
-      width = width || rect.width;
-      height = height || rect.height;
+    if (typeof el.getBoundingClientRect === 'function') {
+      var rect = el.getBoundingClientRect();
+      width = Math.max(width, rect.width);
+      height = Math.max(height, rect.height);
     }
 
-    display.style.transform = previousTransform;
+    if (typeof document.createRange === 'function') {
+      try {
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var rr = range.getBoundingClientRect();
+        width = Math.max(width, rr.width);
+        height = Math.max(height, rr.height);
+      } catch (e) { /* ignore */ }
+    }
+
     return { width: width, height: height };
   }
 
+  function computeBaseCellSize() {
+    var size = Math.min(window.innerWidth / 110, window.innerHeight / 70);
+    return Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, size));
+  }
+
+  // Sizes the focused display to always fit the viewport by scaling the real
+  // layout via --root-cell-size (every font derives from it through
+  // --cell-size), NOT a CSS transform — so flexbox keeps it centered and
+  // nothing ever overflows or needs a scrollbar. Measures at the base size,
+  // then shrinks proportionally with a safety margin (monospace glyph ink
+  // tends to render a bit wider than its measured box).
   function fitDisplays() {
+    var root = document.documentElement;
+    var base = computeBaseCellSize();
+    // Measure at the base size for a stable, oscillation-free result.
+    root.style.setProperty('--root-cell-size', base.toFixed(2) + 'px');
+
     var pane = document.querySelector('.pane--focused');
-    var display = pane ? pane.querySelector(FOCUSED_DISPLAY_SELECTOR) : null;
-    clearInactiveDisplayFits(display);
+    var display = fitTargetForPane(pane);
+    // The fit is now layout-based; make sure no stale transform lingers.
+    clearInactiveDisplayFits(null);
+    if (display) {
+      clearDisplayFit(display);
+    }
 
     if (!pane || !display) {
       return;
     }
 
-    var natural = measureNaturalSize(display);
+    var natural = measureContent(display);
     if (!natural.width || !natural.height) {
       return;
     }
 
     var paneRect = pane.getBoundingClientRect();
-    var availableWidth = window.innerWidth - horizontalMainPadding();
+    var availableWidth = window.innerWidth - VIEWPORT_FIT_MARGIN_PX;
     var availableHeight = paneRect.height - verticalPadding(pane);
-
     if (!availableWidth || availableWidth < 1) {
-      availableWidth = paneRect.width || window.innerWidth;
+      availableWidth = window.innerWidth;
     }
     if (!availableHeight || availableHeight < 1) {
-      availableHeight = paneRect.height || window.innerHeight;
+      availableHeight = window.innerHeight;
     }
 
-    var scale = Math.min(1, availableWidth / natural.width, availableHeight / natural.height);
-    if (!isFinite(scale) || scale <= 0) {
-      scale = 1;
+    var factor = Math.min(1, availableWidth / natural.width, availableHeight / natural.height);
+    if (!isFinite(factor) || factor <= 0) {
+      factor = 1;
     }
+    factor *= FIT_SAFETY;
 
-    var scaleKey = scale.toFixed(4);
-    if (display._fitScale === scaleKey) {
-      return;
-    }
-
-    display._fitScale = scaleKey;
-    display.style.transformOrigin = 'center center';
-    display.style.transform = scale < 1 ? 'scale(' + scaleKey + ')' : '';
+    var newSize = Math.max(MIN_FIT_CELL_SIZE, base * factor);
+    root.style.setProperty('--root-cell-size', newSize.toFixed(2) + 'px');
   }
 
-  // Recomputes --root-cell-size from the current viewport so the big Clock
-  // display scales down on small windows (avoiding overflow/scrollbars)
-  // and scales up on large ones, instead of staying frozen at one fixed
-  // pixel size. --cell-size, the clock's own override, and the segment-
-  // display CSS (pure calc()-driven, no inline JS pixel styles) all derive
-  // from --root-cell-size, so writing this one custom property reflows
-  // every already-rendered digit with no re-render call needed.
+  // Sets the base --root-cell-size from the viewport; fitDisplays() then
+  // refines it down so the focused display fits. Kept as a separate entry so
+  // resize can set a sane size even before the first fit pass runs.
   function updateCellSize() {
-    var widthBased = window.innerWidth / 110;
-    var heightBased = window.innerHeight / 70;
-    var size = Math.min(widthBased, heightBased);
-    size = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, size));
-    document.documentElement.style.setProperty('--root-cell-size', size.toFixed(2) + 'px');
+    document.documentElement.style.setProperty(
+      '--root-cell-size', computeBaseCellSize().toFixed(2) + 'px');
+    fitDisplays();
   }
 
   function onResize() {

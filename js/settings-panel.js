@@ -32,6 +32,10 @@
     { value: 'afont-standard', label: 'Figlet: Standard' },
     { value: 'afont-big', label: 'Figlet: Big' },
     { value: 'afont-banner', label: 'Figlet: Banner' },
+    { value: 'afont-ansishadow', label: 'Figlet: ANSI Shadow' },
+    { value: 'afont-ansiregular', label: 'Figlet: ANSI Regular' },
+    { value: 'afont-mini', label: 'Figlet: Mini' },
+    { value: 'afont-slant', label: 'Figlet: Slant' },
     { value: 'dot-matrix', label: 'Dot Matrix' }
   ];
 
