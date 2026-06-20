@@ -1,0 +1,1274 @@
+/* style.css
+   Amber-on-black terminal ("TUI") theme foundation: colors, typography,
+   tab bar, and the segment-display component. Later steps extend this
+   file with timer/alarm list rows, forms, and view-specific layout. */
+
+:root {
+  /* Palette */
+  --bg: #000000;
+  --bg-raised: #0a0a0a;
+  --fg: #ffb000;               /* amber */
+  --fg-dim: rgba(255, 176, 0, 0.15); /* "off" segment color */
+  --fg-muted: rgba(255, 176, 0, 0.55);
+  --border: rgba(255, 176, 0, 0.35);
+  --glow: rgba(255, 176, 0, 0.65);
+
+  /* Typography */
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", "Cascadia Code",
+    "Courier New", Courier, monospace;
+
+  /* Segment display sizing (scales the whole component). --root-cell-size
+     is the single value app.js's updateCellSize() writes on resize; --cell-
+     size itself (used directly by list-row-sized displays that don't
+     override it) and the clock/timer-row overrides elsewhere in this file
+     all derive from it via calc(), so one JS write rescales every segment
+     display on the page proportionally. */
+  --root-cell-size: 10px;
+  --cell-size: var(--root-cell-size);
+  --segment-gap: calc(var(--cell-size) * 0.35);
+  --digit-gap: calc(var(--cell-size) * 0.6);
+
+  /* Segment transition timing */
+  --segment-transition: 150ms ease-out;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Guarantees the `hidden` attribute always actually hides an element, even
+   on nodes that also carry a class setting their own `display` (e.g. the
+   timers-view__form/list elements toggling .hidden via JS) — without this,
+   a more specific class selector's `display: flex` would otherwise beat
+   the UA stylesheet's `[hidden] { display: none }`. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------------------------------------------------------------------
+   App header (mode indicator + settings gear)
+   Replaces the old clickable tab bar now that navigation is hotkey-driven
+   (C/D/T) rather than click-driven — this is a slim informational strip,
+   not a nav control.
+   ------------------------------------------------------------------ */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 0 0.5rem;
+}
+
+.app-header__mode-indicator {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px var(--glow);
+}
+
+.app-header__hint {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  text-shadow: none;
+}
+
+/* ---------------------------------------------------------------------
+   Mode containers
+   ------------------------------------------------------------------ */
+
+main {
+  padding: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------
+   Segment display component
+   ------------------------------------------------------------------ */
+
+.segment-display {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--digit-gap);
+  padding: calc(var(--cell-size) * 0.8);
+}
+
+.sd-digit {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, var(--cell-size));
+  /* Horizontal bars (a, g, d) are one cell tall; the vertical strokes
+     (f, b above the middle, e, c below it) are two cells tall each, so
+     the digit reads with realistic 7-segment proportions rather than
+     looking squashed. */
+  grid-template-rows:
+    var(--cell-size)
+    calc(var(--cell-size) * 2)
+    var(--cell-size)
+    calc(var(--cell-size) * 2)
+    var(--cell-size);
+  gap: var(--segment-gap);
+  width: calc(var(--cell-size) * 2 + var(--segment-gap));
+}
+
+.sd-cell {
+  background: var(--fg-dim);
+  transition: background-color var(--segment-transition), box-shadow var(--segment-transition);
+}
+
+.sd-cell.on {
+  background: var(--fg);
+  box-shadow: 0 0 calc(var(--cell-size) * 0.6) var(--glow);
+}
+
+/* Segment placement within the 2-column x 5-row digit grid:
+   row 1: top (a)            - 1 cell tall
+   row 2: top-left (f) / top-right (b)  - 2 cells tall
+   row 3: middle (g)         - 1 cell tall
+   row 4: bottom-left (e) / bottom-right (c) - 2 cells tall
+   row 5: bottom (d)         - 1 cell tall */
+
+.sd-seg-a {
+  grid-column: 1 / span 2;
+  grid-row: 1;
+}
+
+.sd-seg-f {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.sd-seg-b {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.sd-seg-g {
+  grid-column: 1 / span 2;
+  grid-row: 3;
+}
+
+.sd-seg-e {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+.sd-seg-c {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+.sd-seg-d {
+  grid-column: 1 / span 2;
+  grid-row: 5;
+}
+
+/* Punctuation "digit" (colon / period): narrower, just two stacked dots,
+   aligned with the vertical-stroke rows of a full digit (rows 2 and 4)
+   so colons line up visually with the digits beside them. */
+
+.sd-digit-punct {
+  display: grid;
+  grid-template-rows:
+    var(--cell-size)
+    calc(var(--cell-size) * 2)
+    var(--cell-size)
+    calc(var(--cell-size) * 2)
+    var(--cell-size);
+  gap: var(--segment-gap);
+  width: var(--cell-size);
+}
+
+.sd-dot {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 2px;
+  align-self: end;
+}
+
+.sd-dot-upper {
+  grid-row: 2;
+}
+
+.sd-dot-lower {
+  grid-row: 4;
+}
+
+/* ---------------------------------------------------------------------
+   Notification flash (notify.js)
+   Blinks an element between its normal amber look and a bright/inverted
+   amber look, used to draw attention to a finished timer row or firing
+   alarm. Toggled via the .flashing class (added/removed by Notify.flash
+   / Notify.stopFlash); the animation itself is pure CSS.
+   ------------------------------------------------------------------ */
+
+.flashing {
+  animation: notify-flash 600ms steps(1, end) infinite;
+}
+
+@keyframes notify-flash {
+  0%,
+  49% {
+    background: var(--bg);
+    color: var(--fg);
+    box-shadow: none;
+  }
+  50%,
+  100% {
+    background: var(--fg);
+    color: var(--bg);
+    box-shadow: 0 0 calc(var(--cell-size) * 1.2) var(--glow);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Clock view (clock-view.js)
+   ------------------------------------------------------------------ */
+
+.clock-view__display {
+  /* Scales with the root --cell-size (updated by app.js on resize) instead
+     of a fixed px value, so the resize handler's recalculation actually
+     reaches the clock's big display. 1.4x keeps the clock noticeably
+     larger than the 10px root default, matching the original 14px look. */
+  --cell-size: calc(var(--root-cell-size, 10px) * 1.4);
+  margin-bottom: 1rem;
+}
+
+.clock-view__controls {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.clock-view__format-btn {
+  appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.clock-view__format-btn:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.clock-view__timezone-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clock-view__timezone-select {
+  appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.clock-view__timezone-select:hover {
+  border-color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Timers view (timers-view.js)
+   ------------------------------------------------------------------ */
+
+.timers-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timers-view__focused {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timers-view__focused-title {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timers-view__focused-subtitle {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.timers-view__focused-label {
+  color: var(--fg-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timers-view__focused-display {
+  --cell-size: 18px;
+}
+
+.timers-view__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-raised);
+}
+
+.timers-view__form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timers-view__form-input {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+}
+
+.timers-view__form-input:focus {
+  outline: none;
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.timers-view__form-error {
+  flex: 1 0 100%;
+  color: var(--fg);
+  background: rgba(255, 80, 0, 0.15);
+  border: 1px solid rgba(255, 80, 0, 0.5);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.timers-view__form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.timers-view__form-submit {
+  appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.timers-view__form-submit:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.timers-view__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.timers-view__empty {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+}
+
+.timers-view__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-raised);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.timers-view__row:hover {
+  border-color: var(--fg-muted);
+}
+
+.timers-view__row.is-focused {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 8px var(--glow);
+}
+
+.timers-view__row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 8rem;
+}
+
+.timers-view__row-name {
+  color: var(--fg);
+  font-size: 0.95rem;
+}
+
+.timers-view__row-status {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timers-view__row-display {
+  --cell-size: 8px;
+}
+
+.timers-view__row-controls {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.timers-view__row-btn {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.timers-view__row-btn:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.timers-view__row-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------------
+   Timer/stopwatch view (timer-stopwatch-view.js)
+   Mirrors the rule shapes of the timers-view__* block above, kept under
+   its own prefix so the two panes can be restyled independently later.
+   ------------------------------------------------------------------ */
+
+.timer-stopwatch-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timer-stopwatch-view__focused {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timer-stopwatch-view__focused-title {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timer-stopwatch-view__focused-subtitle {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.timer-stopwatch-view__focused-label {
+  color: var(--fg-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timer-stopwatch-view__focused-display {
+  --cell-size: 18px;
+}
+
+.timer-stopwatch-view__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-raised);
+}
+
+.timer-stopwatch-view__form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timer-stopwatch-view__form-input {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+}
+
+.timer-stopwatch-view__form-input:focus {
+  outline: none;
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.timer-stopwatch-view__form-error {
+  flex: 1 0 100%;
+  color: var(--fg);
+  background: rgba(255, 80, 0, 0.15);
+  border: 1px solid rgba(255, 80, 0, 0.5);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.timer-stopwatch-view__form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.timer-stopwatch-view__form-submit {
+  appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.timer-stopwatch-view__form-submit:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.timer-stopwatch-view__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.timer-stopwatch-view__empty {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+}
+
+.timer-stopwatch-view__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-raised);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.timer-stopwatch-view__row:hover {
+  border-color: var(--fg-muted);
+}
+
+.timer-stopwatch-view__row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 8rem;
+}
+
+.timer-stopwatch-view__row-name {
+  color: var(--fg);
+  font-size: 0.95rem;
+}
+
+.timer-stopwatch-view__row-status {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timer-stopwatch-view__row-display {
+  --cell-size: 8px;
+}
+
+.timer-stopwatch-view__row-controls {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.timer-stopwatch-view__row-btn {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.timer-stopwatch-view__row-btn:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+/* ---------------------------------------------------------------------
+   Alarms view (alarms-view.js)
+   ------------------------------------------------------------------ */
+
+.alarms-view__new {
+  margin-bottom: 1rem;
+}
+
+.alarms-view__new-toggle {
+  appearance: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarms-view__new-toggle:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarms-view__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1rem;
+  max-width: 28rem;
+}
+
+.alarms-view__form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.alarms-view__form-label--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alarms-view__time-input {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+}
+
+.alarms-view__day-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.alarms-view__day-chip {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
+}
+
+.alarms-view__day-chip.is-active {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarms-view__day-chip:hover {
+  border-color: var(--fg-muted);
+}
+
+.alarms-view__form-error {
+  color: var(--fg);
+  background: rgba(255, 80, 0, 0.12);
+  border: 1px solid rgba(255, 80, 0, 0.45);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.alarms-view__form-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.alarms-view__form-submit,
+.alarms-view__form-cancel {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarms-view__form-submit:hover,
+.alarms-view__form-cancel:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarms-view__banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 0 calc(var(--cell-size) * 1.2) var(--glow);
+}
+
+.alarms-view__banner-text {
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.alarms-view__banner-dismiss {
+  appearance: none;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--bg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.alarms-view__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.alarms-view__empty {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.alarms-view__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  transition: border-color 150ms ease-out;
+}
+
+.alarms-view__row.is-disabled {
+  opacity: 0.5;
+}
+
+.alarms-view__row-time {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  min-width: 5.5rem;
+}
+
+.alarms-view__row-days {
+  flex: 1;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.alarms-view__row-toggle {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 3rem;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
+}
+
+.alarms-view__row-toggle.is-on {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.alarms-view__row-toggle:hover {
+  border-color: var(--fg-muted);
+}
+
+.alarms-view__row-delete {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.alarms-view__row-delete:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+/* ===== Theming: color schemes + visual styles ===== */
+
+/* -----------------------------------------------------------------------
+   Color schemes (data-color on <html>)
+   "amber" matches the original :root palette exactly (default/fallback).
+   "green" and "cyan" mirror the same relative opacity ratios used for
+   amber's --fg-dim/--fg-muted/--border/--glow, just with a different hue.
+   -------------------------------------------------------------------- */
+
+:root,
+[data-color='amber'] {
+  --fg: #ffb000;
+  --fg-dim: rgba(255, 176, 0, 0.15);
+  --fg-muted: rgba(255, 176, 0, 0.55);
+  --border: rgba(255, 176, 0, 0.35);
+  --glow: rgba(255, 176, 0, 0.65);
+}
+
+[data-color='green'] {
+  --fg: #33ff66;
+  --fg-dim: rgba(51, 255, 102, 0.15);
+  --fg-muted: rgba(51, 255, 102, 0.55);
+  --border: rgba(51, 255, 102, 0.35);
+  --glow: rgba(51, 255, 102, 0.65);
+}
+
+[data-color='cyan'] {
+  --fg: #66f6ff;
+  --fg-dim: rgba(102, 246, 255, 0.15);
+  --fg-muted: rgba(102, 246, 255, 0.55);
+  --border: rgba(102, 246, 255, 0.35);
+  --glow: rgba(102, 246, 255, 0.65);
+}
+
+/* -----------------------------------------------------------------------
+   Visual styles (data-style on <html>)
+   "flat" is the default/original rendering — no rules needed for it since
+   the unscoped base styles above already produce that look.
+   -------------------------------------------------------------------- */
+
+/* "3d": lit segments look raised/extruded — a beveled gradient face,
+   a brighter top-edge glow, and a directional drop shadow offset
+   down-right to suggest a physically raised block. */
+[data-style='3d'] .sd-cell.on {
+  background: linear-gradient(135deg, var(--fg) 0%, var(--fg) 55%, var(--fg-muted) 100%);
+  box-shadow:
+    0 0 calc(var(--cell-size) * 0.6) var(--glow),
+    calc(var(--cell-size) * 0.12) calc(var(--cell-size) * 0.18) calc(var(--cell-size) * 0.25) rgba(0, 0, 0, 0.55);
+}
+
+/* "crt": keep the flat-glow base look, but overlay scanlines + a subtle
+   vignette on every segment-display instance (clock + timer rows/focused
+   display all share the .segment-display class). Pseudo-element is purely
+   decorative (pointer-events: none) and sits above the digits via z-index
+   without altering layout (absolute + inset 0 within the relatively
+   positioned, already-padded .segment-display box). */
+[data-style='crt'] .segment-display {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-style='crt'] .segment-display::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.18) 0px,
+    rgba(0, 0, 0, 0.18) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  box-shadow: inset 0 0 calc(var(--cell-size) * 2.4) rgba(0, 0, 0, 0.55);
+  z-index: 1;
+}
+
+/* -----------------------------------------------------------------------
+   Settings panel (settings-panel.js) — gear button + dropdown
+   -------------------------------------------------------------------- */
+
+.settings-panel {
+  position: absolute;
+  top: 0;
+  right: 0.5rem;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.settings-panel__toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--fg-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.45rem 0.7rem;
+  margin-top: 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.settings-panel__toggle:hover,
+.settings-panel__toggle.is-active {
+  color: var(--fg);
+  border-color: var(--border);
+}
+
+.settings-panel__dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 11rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.85rem;
+  box-shadow: 0 0 calc(var(--cell-size) * 1.2) var(--glow);
+}
+
+.settings-panel__dropdown.is-open {
+  display: flex;
+}
+
+.settings-panel__group-label {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.settings-panel__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.settings-panel__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.settings-panel__option:hover {
+  color: var(--fg);
+}
+
+.settings-panel__option input[type='radio'] {
+  accent-color: var(--fg);
+  cursor: pointer;
+}
+
+/* ===== Layout: centering + viewfinder frame ===== */
+
+/* App header height is needed so `main` can size itself to exactly fill the
+   remaining viewport (calc(100vh - var(--app-header-height))) rather than
+   via a hardcoded guess. Kept as a custom property so it stays in one place
+   if the header's own padding/font-size ever change. Same value as the old
+   --tab-bar-height — no tab bar anymore, but the header strip occupies the
+   same slim footprint. */
+:root {
+  --app-header-height: 3rem;
+}
+
+.app-header {
+  min-height: var(--app-header-height);
+}
+
+/* `main` fills the rest of the viewport below the header and becomes the
+   layout context for the three panes. Using calc(100vh - ...) instead of a
+   fixed pixel height keeps this correct automatically on every resize, with
+   no JS involved for the centering itself (only --cell-size needs JS, since
+   it changes the *content* size, not its position).
+
+   `main` is a row-wrapping flex container rather than a column one: the two
+   small `.pane--minor` panes are auto-width row items that land next to
+   each other on the first line, and the single `.pane--focused` pane below
+   them forces a wrap onto its own line via flex-basis: 100% and then grows
+   to fill all remaining height. This keeps all three panes plain flex
+   siblings of `main` — no wrapper element, no JS reparenting — while still
+   getting a "small row near the top, big pane below" layout. */
+main {
+  box-sizing: border-box;
+  min-height: calc(100vh - var(--app-header-height));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 1rem;
+}
+
+/* Pane layout: all three panes (#view-clock / #view-timers /
+   #view-timer-mode) stay mounted as direct children of `main` at all
+   times — app.js only ever toggles .pane--focused / .pane--minor on them,
+   never moves them in the DOM or hides them. */
+.pane {
+  box-sizing: border-box;
+}
+
+/* Minor panes: small, auto-sized row items pinned to the top row. Two of
+   them are always present at once and sit side by side via `main`'s row-
+   wrap; `order: 1` keeps them ahead of the focused pane in source order
+   regardless of which view it actually is. */
+.pane--minor {
+  order: 1;
+  flex: 0 0 auto;
+}
+
+/* Focused pane: the one large, centered view. flex-basis: 100% forces it
+   onto its own line below the minor row (since the two minor panes' auto
+   width never fills a full row), and flex-grow: 1 lets it fill all
+   remaining vertical space in `main` — the same centered-both-axes look
+   `.mode.is-active` used to produce. */
+.pane--focused {
+  order: 2;
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Minor-pane compact sizing: scales every segment-display inside a minor
+   pane down to a small-but-legible size and tightens up the surrounding
+   padding, regardless of which view it is. 6px sits just under the
+   smallest existing scoped override (.timers-view__row-display's 8px) so
+   the minor row reads clearly as "smaller than a list row". */
+.pane--minor .segment-display {
+  --cell-size: 6px;
+  padding: calc(var(--cell-size) * 0.6);
+}
+
+.pane--minor .viewfinder-frame {
+  padding: 0.6rem;
+}
+
+.pane--minor .viewfinder-frame__corner {
+  width: 12px;
+  height: 12px;
+}
+
+.pane--minor .clock-view__controls {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------
+   Alarm corner widget mount point (built out in a later step) — sane
+   default placement so it isn't unstyled/unpositioned before that step
+   fills it in. Kept minimal/generic on purpose.
+   ------------------------------------------------------------------ */
+
+#alarm-corner {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 20;
+}
+
+/* ---------------------------------------------------------------------
+   Viewfinder corner-bracket frame (clock-view.js)
+   Wraps the Clock view's big segment-display mount only. Four L-shaped
+   corner marks built from border-top/border-left (mirrored per corner),
+   themed via --border so it automatically matches the active color
+   scheme and stays present across every visual style (flat/3d/crt) since
+   it lives outside the data-style-scoped rules above.
+   ------------------------------------------------------------------ */
+
+.viewfinder-frame {
+  position: relative;
+  display: inline-flex;
+  padding: 1.75rem;
+}
+
+.viewfinder-frame__corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.viewfinder-frame__corner--tl {
+  top: 0;
+  left: 0;
+  border-top: 2px solid var(--border);
+  border-left: 2px solid var(--border);
+}
+
+.viewfinder-frame__corner--tr {
+  top: 0;
+  right: 0;
+  border-top: 2px solid var(--border);
+  border-right: 2px solid var(--border);
+}
+
+.viewfinder-frame__corner--bl {
+  bottom: 0;
+  left: 0;
+  border-bottom: 2px solid var(--border);
+  border-left: 2px solid var(--border);
+}
+
+.viewfinder-frame__corner--br {
+  bottom: 0;
+  right: 0;
+  border-bottom: 2px solid var(--border);
+  border-right: 2px solid var(--border);
+}

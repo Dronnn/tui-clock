@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TUI Clock</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__mode-indicator" id="mode-indicator">
+      CLOCK <span class="app-header__hint">(C/D/T to switch)</span>
+    </div>
+    <div id="settings-panel"></div>
+  </header>
+
+  <main>
+    <div id="view-clock" class="pane pane--focused"></div>
+    <div id="view-timers" class="pane pane--minor"></div>
+    <div id="view-timer-mode" class="pane pane--minor"></div>
+  </main>
+
+  <!-- alarms corner widget — built in a later step -->
+  <div id="alarm-corner"></div>
+
+  <!-- Foundation scripts -->
+  <script src="js/storage.js"></script>
+  <script src="js/segment-display.js"></script>
+  <script src="js/notify.js"></script>
+
+  <!-- Models before the views that depend on them -->
+  <script src="js/timer-model.js"></script>
+  <script src="js/alarm-model.js"></script>
+
+  <!-- Views -->
+  <script src="js/clock-view.js"></script>
+  <script src="js/timers-view.js"></script>
+  <script src="js/timer-stopwatch-view.js"></script>
+  <script src="js/alarms-view.js"></script>
+  <script src="js/settings-panel.js"></script>
+
+  <!-- Boot / integration (last: calls into all of the above) -->
+  <script src="js/app.js"></script>
+</body>
+</html>
