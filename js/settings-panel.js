@@ -36,6 +36,9 @@
     { value: 'afont-ansiregular', label: 'Figlet: ANSI Regular' },
     { value: 'afont-mini', label: 'Figlet: Mini' },
     { value: 'afont-slant', label: 'Figlet: Slant' },
+    { value: 'afont-doom', label: 'Figlet: Doom' },
+    { value: 'afont-small', label: 'Figlet: Small' },
+    { value: 'afont-digital', label: 'Figlet: Digital' },
     { value: 'dot-matrix', label: 'Dot Matrix' }
   ];
 
