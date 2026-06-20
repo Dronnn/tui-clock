@@ -1823,7 +1823,7 @@ main {
 
 .bs-on {
   background: var(--fg);
-  box-shadow: 0 0 calc(var(--bs-cell) * 0.25) var(--glow);
+  box-shadow: 0 0 calc(var(--bs-cell) * 0.06) var(--glow);
 }
 
 .bs-shadow {
