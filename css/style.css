@@ -50,6 +50,9 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* Never show scrollbars: every design must fit fully on screen (the
+     focused display is auto-scaled to fit by app.js). */
+  overflow: hidden;
 }
 
 html {
