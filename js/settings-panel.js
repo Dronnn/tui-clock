@@ -376,10 +376,39 @@
     return state.fontShuffle;
   }
 
-  function onColorChange(value) {
+  function setColor(value) {
     state.colorScheme = value;
     applyColor(value);
     savePrefs({ colorScheme: value });
+    if (state.dropdown) {
+      var radios = state.dropdown.querySelectorAll('input[name="settings-panel-color"]');
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].checked = radios[i].value === value;
+      }
+    }
+  }
+
+  function onColorChange(value) {
+    setColor(value);
+  }
+
+  // Advances the color scheme to the next entry, wrapping. Bound to the 'X'
+  // hotkey by app.js.
+  function cycleColor(step) {
+    var n = COLOR_OPTIONS.length;
+    if (n === 0) {
+      return null;
+    }
+    var idx = 0;
+    for (var i = 0; i < n; i++) {
+      if (COLOR_OPTIONS[i].value === state.colorScheme) {
+        idx = i;
+        break;
+      }
+    }
+    var next = ((idx + (step || 1)) % n + n) % n;
+    setColor(COLOR_OPTIONS[next].value);
+    return COLOR_OPTIONS[next];
   }
 
   function onMatrixBgChange(value) {
@@ -451,6 +480,7 @@
   window.SettingsPanel = {
     init: init,
     cycleStyle: cycleStyle,
+    cycleColor: cycleColor,
     setShuffle: setShuffle,
     toggleShuffle: toggleShuffle,
     isShuffling: isShuffling

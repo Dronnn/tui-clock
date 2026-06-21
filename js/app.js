@@ -292,12 +292,23 @@
     if (!modeContainers || !modeContainers[modeName]) {
       return;
     }
-    var key;
-    for (key in modeContainers) {
-      if (Object.prototype.hasOwnProperty.call(modeContainers, key)) {
-        var isFocused = key === modeName;
-        modeContainers[key].classList.toggle('pane--focused', isFocused);
-        modeContainers[key].classList.toggle('pane--minor', !isFocused);
+    // Iterate in a fixed order so the two minor (non-focused) panes always land
+    // in the top-left and top-right corners (first minor left, second right),
+    // never overlapping and never sitting in the center.
+    var minorIndex = 0;
+    for (var i = 0; i < MODE_ORDER.length; i++) {
+      var key = MODE_ORDER[i];
+      var el = modeContainers[key];
+      if (!el) {
+        continue;
+      }
+      var isFocused = key === modeName;
+      el.classList.toggle('pane--focused', isFocused);
+      el.classList.toggle('pane--minor', !isFocused);
+      el.classList.remove('pane--minor--left', 'pane--minor--right');
+      if (!isFocused) {
+        el.classList.add(minorIndex === 0 ? 'pane--minor--left' : 'pane--minor--right');
+        minorIndex++;
       }
     }
     window.TimersView.setPaneFocused(modeName === 'timers');
@@ -380,6 +391,13 @@
       if (window.SettingsPanel && typeof window.SettingsPanel.toggleShuffle === 'function') {
         window.SettingsPanel.toggleShuffle();
         tickAll();
+      }
+      return;
+    }
+    // 'X' cycles the color scheme.
+    if (keyName === 'x' || event.code === 'KeyX') {
+      if (window.SettingsPanel && typeof window.SettingsPanel.cycleColor === 'function') {
+        window.SettingsPanel.cycleColor(1);
       }
       return;
     }

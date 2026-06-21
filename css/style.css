@@ -1504,16 +1504,11 @@ main {
   z-index: 1;
 }
 
-#view-clock.pane--minor {
+.pane--minor--left {
   left: 0.5rem;
 }
 
-#view-timers.pane--minor {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#view-timer-mode.pane--minor {
+.pane--minor--right {
   right: 0.5rem;
 }
 

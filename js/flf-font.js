@@ -64,56 +64,119 @@
     return entry.name;
   }
 
-  // Trims the figlet art so its bounding box hugs the visible "ink": drops
-  // leading/trailing blank lines and the common left/right blank margin. Fonts
-  // carry different amounts of internal padding, so without this the framed
-  // text would sit off-centre (often pushed to the top) and the frame's gap
-  // would vary font-to-font. After trimming, a uniform CSS padding gives every
-  // font the same gap and keeps the text centred.
-  function trimArt(art) {
-    var lines = art.split('\n');
-    while (lines.length && lines[0].trim() === '') {
-      lines.shift();
-    }
-    while (lines.length && lines[lines.length - 1].trim() === '') {
-      lines.pop();
-    }
-    if (!lines.length) {
-      return '';
-    }
-    var minLead = Infinity;
-    for (var i = 0; i < lines.length; i++) {
-      if (lines[i].trim() === '') {
-        continue; // ignore interior blank lines when measuring the left margin
-      }
-      var lead = lines[i].length - lines[i].replace(/^ +/, '').length;
-      if (lead < minLead) {
-        minLead = lead;
-      }
-    }
-    if (minLead === Infinity || minLead < 0) {
-      minLead = 0;
-    }
-    for (var j = 0; j < lines.length; j++) {
-      // Drop the shared left indent and any trailing spaces so the widest
-      // inked line defines the box width.
-      lines[j] = lines[j].slice(minLead).replace(/\s+$/, '');
-    }
-    return lines.join('\n');
-  }
+  // Per-font caches: the widest digit glyph, and the stable "box" (left margin +
+  // width in columns) of a given digit-normalized shape.
+  var widestDigitCache = {};
+  var shapeBoxCache = {};
 
-  function renderArt(fontName, str) {
-    // A very large width disables figlet's word-wrapping. Without it, wide
-    // fonts wrap (or fail to empty) on long space-less strings like
-    // "0123456789"; the app does its own fit-to-viewport scaling instead.
-    var art = window.figlet.textSync(str, {
+  function figletRaw(fontName, s) {
+    // A very large width disables figlet's word-wrapping. Without it, wide fonts
+    // wrap (or fail to empty) on long space-less strings; the app does its own
+    // fit-to-viewport scaling instead.
+    return window.figlet.textSync(s, {
       font: fontName,
       horizontalLayout: 'default',
       verticalLayout: 'default',
       width: 100000,
       whitespaceBreak: false
     });
-    return trimArt(art);
+  }
+
+  function spaces(n) {
+    return n > 0 ? new Array(n + 1).join(' ') : '';
+  }
+
+  function dropBlankEdges(lines) {
+    var start = 0;
+    var end = lines.length;
+    while (start < end && lines[start].trim() === '') {
+      start++;
+    }
+    while (end > start && lines[end - 1].trim() === '') {
+      end--;
+    }
+    return lines.slice(start, end);
+  }
+
+  // Common count of leading spaces across the inked lines (ignoring blank ones).
+  function commonLeftMargin(lines) {
+    var min = Infinity;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === '') {
+        continue;
+      }
+      var lead = lines[i].length - lines[i].replace(/^ +/, '').length;
+      if (lead < min) {
+        min = lead;
+      }
+    }
+    return isFinite(min) ? min : 0;
+  }
+
+  function widestDigit(fontName) {
+    if (widestDigitCache[fontName]) {
+      return widestDigitCache[fontName];
+    }
+    var best = '0';
+    var bestWidth = -1;
+    for (var d = 0; d < 10; d++) {
+      var lines = dropBlankEdges(figletRaw(fontName, String(d)).split('\n'));
+      var ml = commonLeftMargin(lines);
+      var w = 0;
+      for (var i = 0; i < lines.length; i++) {
+        var t = lines[i].slice(ml).replace(/\s+$/, '');
+        if (t.length > w) {
+          w = t.length;
+        }
+      }
+      if (w > bestWidth) {
+        bestWidth = w;
+        best = String(d);
+      }
+    }
+    widestDigitCache[fontName] = best;
+    return best;
+  }
+
+  // The stable box for a shape (the string with every digit replaced by the
+  // font's widest digit): its left margin and column width. Because the widest
+  // digit is used, the real string never exceeds this width, so the rendered
+  // block keeps a constant size as digits tick — the left edge stays put and
+  // only trailing space on the right changes. This kills the horizontal jitter
+  // without forcing ugly monospaced digits.
+  function shapeBox(fontName, shape) {
+    var cacheKey = fontName + '|' + shape;
+    if (shapeBoxCache[cacheKey]) {
+      return shapeBoxCache[cacheKey];
+    }
+    var lines = dropBlankEdges(figletRaw(fontName, shape).split('\n'));
+    var minLead = commonLeftMargin(lines);
+    var width = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var t = lines[i].slice(minLead).replace(/\s+$/, '');
+      if (t.length > width) {
+        width = t.length;
+      }
+    }
+    var box = { minLead: minLead, width: width };
+    shapeBoxCache[cacheKey] = box;
+    return box;
+  }
+
+  function renderArt(fontName, str) {
+    var shape = str.replace(/[0-9]/g, widestDigit(fontName));
+    var box = shapeBox(fontName, shape);
+    var lines = dropBlankEdges(figletRaw(fontName, str).split('\n'));
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].slice(box.minLead).replace(/\s+$/, '');
+      if (line.length > box.width) {
+        line = line.slice(0, box.width);
+      }
+      // Right-pad to the stable box width so the <pre> never reflows.
+      out.push(line + spaces(box.width - line.length));
+    }
+    return out.join('\n');
   }
 
   function buildAll(container, str, key, fontName) {
