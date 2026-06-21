@@ -214,6 +214,21 @@
 
     dropdown.appendChild(effectsGroup);
 
+    // Mount the clock's format controls here (they are built by ClockView but
+    // belong in this menu, not under the clock). ClockView is initialized
+    // before SettingsPanel, so getControls() is available.
+    if (window.ClockView && typeof window.ClockView.getControls === 'function') {
+      var clockControls = window.ClockView.getControls();
+      if (clockControls) {
+        var clockLabel = document.createElement('div');
+        clockLabel.className = 'settings-panel__group-label';
+        clockLabel.textContent = 'Clock';
+        dropdown.appendChild(clockLabel);
+        clockControls.classList.add('settings-panel__clock-controls');
+        dropdown.appendChild(clockControls);
+      }
+    }
+
     container.appendChild(dropdown);
 
     state.toggleButton = toggleButton;

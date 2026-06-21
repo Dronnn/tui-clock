@@ -358,7 +358,10 @@
     subtitleFieldLabel.appendChild(subtitleInput);
     controls.appendChild(subtitleFieldLabel);
 
-    container.appendChild(controls);
+    // The controls are NOT placed under the clock; they're mounted into the
+    // settings dropdown (see SettingsPanel) so the clock area stays clean and
+    // perfectly centered. They are exposed via ClockView.getControls().
+    state.controlsEl = controls;
 
     state.displayMount = displayMount;
     state.formatButton = formatButton;
@@ -541,8 +544,13 @@
     renderNow();
   }
 
+  function getControls() {
+    return state.controlsEl;
+  }
+
   window.ClockView = {
     init: init,
-    tick: tick
+    tick: tick,
+    getControls: getControls
   };
 })();

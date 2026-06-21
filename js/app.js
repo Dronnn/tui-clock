@@ -52,6 +52,10 @@
   var FIT_SAFETY = 0.9;
   var MIN_FIT_CELL_SIZE = 2;
 
+  // Manual zoom multiplier applied on top of the auto-fit, set by the +/-
+  // buttons and persisted as prefs.userScale.
+  var userScale = 1;
+
   var resizeRaf = null;
   var styleRaf = null;
 
@@ -191,8 +195,21 @@
     }
     factor *= FIT_SAFETY;
 
-    var newSize = Math.max(MIN_FIT_CELL_SIZE, base * factor);
+    // userScale is the manual +/- zoom on top of the auto-fit (1 = fit to
+    // viewport; >1 enlarges past the fit, <1 shrinks).
+    var newSize = Math.max(MIN_FIT_CELL_SIZE, base * factor * userScale);
     root.style.setProperty('--root-cell-size', newSize.toFixed(2) + 'px');
+  }
+
+  function setUserScale(scale) {
+    userScale = Math.max(0.3, Math.min(4, scale));
+    savePrefs({ userScale: userScale });
+    fitDisplays();
+  }
+
+  // Multiplicative zoom so each press changes the size by a constant ratio.
+  function adjustUserScale(direction) {
+    setUserScale(userScale * (direction > 0 ? 1.15 : 1 / 1.15));
   }
 
   // Sets the base --root-cell-size from the viewport; fitDisplays() then
@@ -418,6 +435,18 @@
     var prefs = loadPrefs();
     if (prefs.matrixBg && window.MatrixBG) {
       window.MatrixBG.enable();
+    }
+    if (typeof prefs.userScale === 'number' && isFinite(prefs.userScale)) {
+      userScale = Math.max(0.3, Math.min(4, prefs.userScale));
+    }
+
+    var zoomIn = document.getElementById('zoom-in');
+    var zoomOut = document.getElementById('zoom-out');
+    if (zoomIn) {
+      zoomIn.addEventListener('click', function () { adjustUserScale(1); });
+    }
+    if (zoomOut) {
+      zoomOut.addEventListener('click', function () { adjustUserScale(-1); });
     }
 
     var initialMode = Object.prototype.hasOwnProperty.call(modeContainers, prefs.activeMode)

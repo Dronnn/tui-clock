@@ -141,6 +141,34 @@ body {
   color: var(--fg-muted);
 }
 
+/* Manual size (+/-) controls, pinned to the left of the header. */
+.app-header__zoom {
+  position: absolute;
+  left: 0.5rem;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.app-header__zoom-btn {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  line-height: 1;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.app-header__zoom-btn:hover {
+  border-color: var(--fg);
+  box-shadow: 0 0 6px var(--glow);
+}
+
 /* Clock format toggles (weekday / seconds / numeric month) in the control row. */
 .clock-view__toggle {
   display: inline-flex;
@@ -757,8 +785,9 @@ main {
   box-shadow: none;
 }
 
-/* Control row under the big focused countdown (Pause/Stop/Reset/Delete). */
-.timers-view__focused-controls {
+/* Control row under the big focused countdown / stopwatch. */
+.timers-view__focused-controls,
+.timer-stopwatch-view__focused-controls {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
@@ -1357,6 +1386,28 @@ main {
   column-gap: 1rem;
 }
 
+/* Clock format controls relocated into the settings dropdown: stack them
+   vertically and let inputs/selects fill the width. */
+.settings-panel__clock-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.settings-panel__clock-controls .clock-view__field-label,
+.settings-panel__clock-controls .clock-view__timezone-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-panel__clock-controls select,
+.settings-panel__clock-controls input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .settings-panel__dropdown.is-open {
   display: flex;
 }
@@ -1429,11 +1480,7 @@ main {
 main {
   box-sizing: border-box;
   min-height: calc(100vh - var(--app-header-height));
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 1rem;
+  position: relative;
 }
 
 /* Pane layout: all three panes (#view-clock / #view-timers /
@@ -1448,9 +1495,26 @@ main {
    them are always present at once and sit side by side via `main`'s row-
    wrap; `order: 1` keeps them ahead of the focused pane in source order
    regardless of which view it actually is. */
+/* Minor panes are pinned out of flow along the top edge (left / center /
+   right by identity, so no two of them ever overlap) and never affect where
+   the focused pane centers. */
 .pane--minor {
-  order: 1;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 0.5rem;
+  z-index: 1;
+}
+
+#view-clock.pane--minor {
+  left: 0.5rem;
+}
+
+#view-timers.pane--minor {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#view-timer-mode.pane--minor {
+  right: 0.5rem;
 }
 
 /* Focused pane: the one large, centered view. flex-basis: 100% forces it
@@ -1458,9 +1522,12 @@ main {
    width never fills a full row), and flex-grow: 1 lets it fill all
    remaining vertical space in `main` — the same centered-both-axes look
    `.mode.is-active` used to produce. */
+/* Focused pane fills the whole main area and centers its content (title +
+   frame + subtitle) on both axes, so the clock sits dead-center of the window
+   regardless of the minor widgets pinned at the top. */
 .pane--focused {
-  order: 2;
-  flex: 1 1 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

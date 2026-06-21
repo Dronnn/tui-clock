@@ -191,10 +191,62 @@
     var labelEl = document.createElement('div');
     labelEl.className = 'timer-stopwatch-view__focused-label';
 
+    var controls = document.createElement('div');
+    controls.className = 'timer-stopwatch-view__focused-controls';
+    controls.hidden = true;
+
+    var toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'timer-stopwatch-view__row-btn timer-stopwatch-view__focused-toggle';
+    toggleBtn.textContent = 'Pause';
+
+    var resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'timer-stopwatch-view__row-btn timer-stopwatch-view__focused-reset';
+    resetBtn.textContent = 'Reset';
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'timer-stopwatch-view__row-btn timer-stopwatch-view__focused-delete';
+    deleteBtn.textContent = 'Delete';
+
+    controls.appendChild(toggleBtn);
+    controls.appendChild(resetBtn);
+    controls.appendChild(deleteBtn);
+
+    toggleBtn.addEventListener('click', function () {
+      var current = focusedId !== null ? TimerModel.getById(focusedId) : null;
+      if (!current) {
+        return;
+      }
+      if (current.status === 'paused') {
+        TimerModel.resume(current.id);
+      } else {
+        TimerModel.pause(current.id);
+      }
+      render();
+    });
+
+    resetBtn.addEventListener('click', function () {
+      if (focusedId !== null) {
+        TimerModel.reset(focusedId);
+        render();
+      }
+    });
+
+    deleteBtn.addEventListener('click', function () {
+      if (focusedId !== null) {
+        TimerModel.delete(focusedId);
+        focusedId = null;
+        renderList();
+      }
+    });
+
     section.appendChild(title);
     section.appendChild(display);
     section.appendChild(subtitleEl);
     section.appendChild(labelEl);
+    section.appendChild(controls);
     container.appendChild(section);
 
     els.focusedSection = section;
@@ -202,6 +254,8 @@
     els.focusedSubtitle = subtitleEl;
     els.focusedDisplay = display;
     els.focusedLabel = labelEl;
+    els.focusedControls = controls;
+    els.focusedToggle = toggleBtn;
   }
 
   // ---------------------------------------------------------------------
@@ -394,12 +448,19 @@
       els.focusedLabel.textContent = focusedTimer.name + ' — ' + statusLabel(focusedTimer);
       var focusedStr = formatDuration(displayMsFor(focusedTimer));
       window.renderDigits(els.focusedDisplay, focusedStr);
+      if (els.focusedControls) {
+        els.focusedControls.hidden = false;
+        els.focusedToggle.textContent = focusedTimer.status === 'paused' ? 'Resume' : 'Pause';
+      }
     } else {
       els.focusedTitle.textContent = 'No stopwatch selected';
       els.focusedSubtitle.textContent = '';
       els.focusedSubtitle.hidden = true;
       els.focusedLabel.textContent = '';
       window.renderDigits(els.focusedDisplay, '--:--:--');
+      if (els.focusedControls) {
+        els.focusedControls.hidden = true;
+      }
     }
   }
 
