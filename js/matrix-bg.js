@@ -9,7 +9,7 @@
   var FONT_SIZE = 18;
   var TRAIL_LENGTH = 16;
   var FRAME_INTERVAL_MS = 1000 / 24;
-  var TRAIL_ALPHA = 0.3;
+  var TRAIL_ALPHA = 0.36;
   var HEAD_ALPHA = 0.75;
   var CANVAS_OPACITY = 0.5;
 
