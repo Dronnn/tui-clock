@@ -604,6 +604,23 @@ main {
   box-shadow: none;
 }
 
+/* Control row under the big focused countdown (Pause/Stop/Reset/Delete). */
+.timers-view__focused-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* The Stop button (dismiss the completion flash) reads as the primary action
+   when a countdown is ringing. */
+.timers-view__row-stop,
+.timers-view__focused-stop {
+  border-color: var(--fg);
+  color: var(--fg);
+  box-shadow: 0 0 6px var(--glow);
+}
+
 /* ---------------------------------------------------------------------
    Timer/stopwatch view (timer-stopwatch-view.js)
    Mirrors the rule shapes of the timers-view__* block above, kept under
@@ -1168,6 +1185,18 @@ main {
   border-radius: 4px;
   padding: 0.85rem;
   box-shadow: 0 0 calc(var(--cell-size) * 1.2) var(--glow);
+  /* The figlet font list is long: cap height to the viewport and scroll so
+     every option stays reachable on any screen. */
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+}
+
+/* Long option groups (the font list) flow in two columns to fit more on
+   screen before scrolling kicks in. */
+.settings-panel__group--columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1rem;
 }
 
 .settings-panel__dropdown.is-open {

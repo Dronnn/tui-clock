@@ -290,6 +290,13 @@
     fitDisplays();
   }
 
+  function cycleStyle(step) {
+    if (window.SettingsPanel && typeof window.SettingsPanel.cycleStyle === 'function') {
+      window.SettingsPanel.cycleStyle(step);
+      tickAll(); // immediate re-render + re-fit for the new font
+    }
+  }
+
   function onModeKeyDown(event) {
     if (event.ctrlKey || event.metaKey || event.altKey) {
       return;
@@ -304,13 +311,15 @@
       window.AlarmCorner.open();
       return;
     }
-    // 'N' (next) cycles the font/visual style. event.code guards against
-    // non-Latin keyboard layouts where the physical N key yields another char.
+    // 'N' (next) / 'P' (previous) cycle the font/visual style. event.code
+    // guards against non-Latin keyboard layouts where the physical key yields
+    // another char.
     if (keyName === 'n' || event.code === 'KeyN') {
-      if (window.SettingsPanel && typeof window.SettingsPanel.cycleStyle === 'function') {
-        window.SettingsPanel.cycleStyle(1);
-        tickAll(); // immediate re-render + re-fit for the new font
-      }
+      cycleStyle(1);
+      return;
+    }
+    if (keyName === 'p' || event.code === 'KeyP') {
+      cycleStyle(-1);
       return;
     }
     var modeName = MODE_KEYS[keyName];

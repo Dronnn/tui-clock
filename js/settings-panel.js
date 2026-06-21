@@ -178,6 +178,7 @@
     dropdown.appendChild(styleLabel);
 
     var styleGroup = buildRadioGroup('settings-panel-style', STYLE_OPTIONS, state.visualStyle, onStyleChange);
+    styleGroup.classList.add('settings-panel__group--columns');
     dropdown.appendChild(styleGroup);
 
     var colorLabel = document.createElement('div');

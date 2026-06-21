@@ -44,6 +44,22 @@
   // fine to reappear, since the row itself shows .flashing while undismissed).
   var notifiedIds = {};
 
+  // Ids whose completion flash the user has dismissed (clicked Stop). A
+  // dismissed-but-still-done countdown shows 00:00:00 without flashing.
+  // Cleared on reset so a re-run can flash again.
+  var dismissedIds = {};
+
+  function dismissTimer(id) {
+    dismissedIds[id] = true;
+    var record = rowRecords[id];
+    if (record) {
+      Notify.stopFlash(record.el);
+    }
+    if (focusedId === id && els.focusedDisplay) {
+      Notify.stopFlash(els.focusedDisplay);
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Formatting
   // ---------------------------------------------------------------------
@@ -255,10 +271,83 @@
     var labelEl = document.createElement('div');
     labelEl.className = 'timers-view__focused-label';
 
+    var controls = document.createElement('div');
+    controls.className = 'timers-view__focused-controls';
+    controls.hidden = true;
+
+    var toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'timers-view__row-btn timers-view__focused-toggle';
+    toggleBtn.textContent = 'Pause';
+
+    var stopBtn = document.createElement('button');
+    stopBtn.type = 'button';
+    stopBtn.className = 'timers-view__row-btn timers-view__focused-stop';
+    stopBtn.textContent = 'Stop';
+    stopBtn.hidden = true;
+
+    var resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'timers-view__row-btn timers-view__focused-reset';
+    resetBtn.textContent = 'Reset';
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'timers-view__row-btn timers-view__focused-delete';
+    deleteBtn.textContent = 'Delete';
+
+    controls.appendChild(toggleBtn);
+    controls.appendChild(stopBtn);
+    controls.appendChild(resetBtn);
+    controls.appendChild(deleteBtn);
+
+    toggleBtn.addEventListener('click', function () {
+      var current = focusedId !== null ? TimerModel.getById(focusedId) : null;
+      if (!current) {
+        return;
+      }
+      if (current.status === 'paused') {
+        TimerModel.resume(current.id);
+      } else {
+        TimerModel.pause(current.id);
+      }
+      render();
+    });
+
+    stopBtn.addEventListener('click', function () {
+      if (focusedId !== null) {
+        dismissTimer(focusedId);
+        render();
+      }
+    });
+
+    resetBtn.addEventListener('click', function () {
+      if (focusedId === null) {
+        return;
+      }
+      delete notifiedIds[focusedId];
+      delete dismissedIds[focusedId];
+      TimerModel.reset(focusedId);
+      Notify.stopFlash(els.focusedDisplay);
+      render();
+    });
+
+    deleteBtn.addEventListener('click', function () {
+      if (focusedId === null) {
+        return;
+      }
+      delete notifiedIds[focusedId];
+      delete dismissedIds[focusedId];
+      TimerModel.delete(focusedId);
+      focusedId = null;
+      renderList();
+    });
+
     section.appendChild(title);
     section.appendChild(display);
     section.appendChild(subtitleEl);
     section.appendChild(labelEl);
+    section.appendChild(controls);
     container.appendChild(section);
 
     els.focusedSection = section;
@@ -266,6 +355,9 @@
     els.focusedSubtitle = subtitleEl;
     els.focusedDisplay = display;
     els.focusedLabel = labelEl;
+    els.focusedControls = controls;
+    els.focusedToggle = toggleBtn;
+    els.focusedStop = stopBtn;
   }
 
   // ---------------------------------------------------------------------
@@ -318,6 +410,12 @@
     toggleBtn.type = 'button';
     toggleBtn.className = 'timers-view__row-btn timers-view__row-toggle';
 
+    var stopBtn = document.createElement('button');
+    stopBtn.type = 'button';
+    stopBtn.className = 'timers-view__row-btn timers-view__row-stop';
+    stopBtn.textContent = 'Stop';
+    stopBtn.hidden = true;
+
     var resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'timers-view__row-btn timers-view__row-reset';
@@ -329,8 +427,15 @@
     deleteBtn.textContent = 'Delete';
 
     controls.appendChild(toggleBtn);
+    controls.appendChild(stopBtn);
     controls.appendChild(resetBtn);
     controls.appendChild(deleteBtn);
+
+    stopBtn.addEventListener('click', function (event) {
+      event.stopPropagation();
+      dismissTimer(timer.id);
+      renderList();
+    });
 
     row.appendChild(info);
     row.appendChild(display);
@@ -353,6 +458,7 @@
     resetBtn.addEventListener('click', function (event) {
       event.stopPropagation();
       delete notifiedIds[timer.id];
+      delete dismissedIds[timer.id];
       TimerModel.reset(timer.id);
       Notify.stopFlash(row);
       renderList();
@@ -361,6 +467,7 @@
     deleteBtn.addEventListener('click', function (event) {
       event.stopPropagation();
       delete notifiedIds[timer.id];
+      delete dismissedIds[timer.id];
       TimerModel.delete(timer.id);
       if (focusedId === timer.id) {
         focusedId = null;
@@ -378,7 +485,8 @@
       nameEl: nameEl,
       statusEl: statusEl,
       display: display,
-      toggleBtn: toggleBtn
+      toggleBtn: toggleBtn,
+      stopBtn: stopBtn
     };
   }
 
@@ -459,10 +567,13 @@
       record.toggleBtn.textContent = timer.status === 'paused' ? 'Resume' : 'Pause';
       record.toggleBtn.disabled = done;
 
-      if (done) {
+      if (done && !dismissedIds[timer.id]) {
         Notify.flash(record.el, { duration: 0 });
       } else {
         Notify.stopFlash(record.el);
+      }
+      if (record.stopBtn) {
+        record.stopBtn.hidden = !done || !!dismissedIds[timer.id];
       }
     }
   }
@@ -490,11 +601,12 @@
       var focusedStr = formatDuration(displayMsFor(focusedTimer));
       window.renderDigits(els.focusedDisplay, focusedStr);
       var focusedDone = TimerModel.isDone(focusedTimer);
-      if (focusedDone) {
+      if (focusedDone && !dismissedIds[focusedTimer.id]) {
         Notify.flash(els.focusedDisplay, { duration: 0 });
       } else {
         Notify.stopFlash(els.focusedDisplay);
       }
+      updateFocusedControls(focusedTimer, focusedDone);
     } else {
       els.focusedTitle.textContent = 'No countdown selected';
       els.focusedSubtitle.textContent = '';
@@ -502,7 +614,25 @@
       els.focusedLabel.textContent = '';
       window.renderDigits(els.focusedDisplay, '--:--:--');
       Notify.stopFlash(els.focusedDisplay);
+      updateFocusedControls(null, false);
     }
+  }
+
+  // Keeps the focused countdown's control row in sync: toggle label/disabled,
+  // and the Stop (dismiss-flash) button visible only while it is finished and
+  // not yet dismissed.
+  function updateFocusedControls(timer, done) {
+    if (!els.focusedControls) {
+      return;
+    }
+    var hasTimer = !!timer;
+    els.focusedControls.hidden = !hasTimer;
+    if (!hasTimer) {
+      return;
+    }
+    els.focusedToggle.textContent = timer.status === 'paused' ? 'Resume' : 'Pause';
+    els.focusedToggle.disabled = done;
+    els.focusedStop.hidden = !done || !!dismissedIds[timer.id];
   }
 
   // Renders whichever of the two modes (full vs compact) currently applies,
