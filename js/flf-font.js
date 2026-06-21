@@ -33,6 +33,20 @@
     return entry ? entry.label || entry.name || key : key;
   }
 
+  // Returns { letters, colon, period } describing which glyph classes the font
+  // can render, so the clock can fall back to a numeric-only format (no
+  // letters) and an alternate time separator (no colon). Unknown fonts are
+  // assumed fully capable.
+  function capabilities(key) {
+    var entry = fontsData()[key];
+    var caps = entry && entry.caps;
+    return {
+      letters: caps ? caps.letters !== false : true,
+      colon: caps ? caps.colon !== false : true,
+      period: caps ? caps.period !== false : true
+    };
+  }
+
   // Parses a font into figlet on first use (lazy — avoids parsing all fonts at
   // boot). Returns the figlet font name to pass to textSync, or null.
   function ensureParsed(key) {
@@ -144,6 +158,7 @@
     render: render,
     has: has,
     order: order,
-    label: label
+    label: label,
+    capabilities: capabilities
   };
 })();

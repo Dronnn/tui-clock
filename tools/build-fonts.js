@@ -50,21 +50,27 @@ ORDER.forEach((name) => {
     return;
   }
   const data = fs.readFileSync(file, 'utf8');
-  // Validate the font parses AND has real digit + colon glyphs. Many display
-  // .flf files define letters only (digit positions are blank), which would
-  // make the clock show nothing where the time should be — those are unusable
-  // here and get dropped.
+  // A font is usable for a clock only if it has digit glyphs. Letters and the
+  // colon are optional: the clock adapts (numeric-only format for letterless
+  // fonts; a '.'/' ' separator when ':' is missing). Many display .flf files
+  // define letters only (digit positions are blank) — those get dropped.
+  function renders(ch) {
+    var art = figlet.textSync(ch, { font: name, width: 100000, whitespaceBreak: false });
+    return !!(art && art.replace(/\s/g, '').length);
+  }
+  var caps;
   try {
     figlet.parseFont(name, data);
-    var required = '0123456789:'.split('');
-    var missing = required.filter(function (ch) {
-      var art = figlet.textSync(ch, { font: name, width: 100000, whitespaceBreak: false });
-      return !art || !art.replace(/\s/g, '').length;
-    });
-    if (missing.length) {
-      console.error('DROP (no glyphs for ' + JSON.stringify(missing.join('')) + '): ' + name);
+    var hasDigits = '0123456789'.split('').every(renders);
+    if (!hasDigits) {
+      console.error('DROP (no digit glyphs): ' + name);
       return;
     }
+    caps = {
+      letters: ['A', 'M', 'J', 'N', 'U', 'S'].every(renders),
+      colon: renders(':'),
+      period: renders('.')
+    };
   } catch (e) {
     console.error('SKIP (render error): ' + name + ' -> ' + e.message);
     return;
@@ -75,7 +81,7 @@ ORDER.forEach((name) => {
     return;
   }
   seen[key] = true;
-  fonts[key] = { name: name, label: name, data: data };
+  fonts[key] = { name: name, label: name, data: data, caps: caps };
   order.push(key);
 });
 

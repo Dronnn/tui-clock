@@ -163,26 +163,48 @@
     return idx === -1 ? '00' : pad2(idx + 1);
   }
 
-  // Composes the display string from the current format pieces. Returns an
-  // uppercase string ready for the active digit renderer. The segment renderer
-  // supports digits, A-Z, ':', '.', and space; alternate renderers may support
-  // a narrower glyph set.
+  // Reports what the currently selected font can render, so the clock can fall
+  // back to a numeric-only format (fonts without letters) and an alternate time
+  // separator (fonts without ':'). Non-figlet renderers support the full set.
+  function activeFontCaps() {
+    var style = document.documentElement.dataset.style || '';
+    if (style.indexOf('afont-') === 0 && window.FlfFont &&
+        typeof window.FlfFont.capabilities === 'function') {
+      var key = style.slice('afont-'.length);
+      if (window.FlfFont.has(key)) {
+        return window.FlfFont.capabilities(key);
+      }
+    }
+    return { letters: true, colon: true, period: true };
+  }
+
+  // Composes the display string from the current format pieces, adapted to the
+  // active font: a font without letters shows an all-numeric 24h date+time, and
+  // a font without ':' uses '.' (or a space) to separate the time.
   function formatNow() {
     var parts12 = getParts(state.timezone);
     var parts24 = get24Parts(state.timezone);
+    var caps = activeFontCaps();
+
+    var sep = caps.colon ? ':' : (caps.period ? '.' : ' ');
+    // Without letters there is no AM/PM and no weekday/month words, so force a
+    // numeric 24h presentation.
+    var use12 = state.timeFormat === '12H' && caps.letters;
+    var weekday = state.showWeekday && caps.letters;
+    var monthNumeric = state.monthNumeric || !caps.letters;
 
     var timeStr;
-    if (state.timeFormat === '12H') {
+    if (use12) {
       var hh12 = pad2(parts12.hour === '24' ? '12' : parts12.hour);
-      timeStr = hh12 + ':' + pad2(parts12.minute);
+      timeStr = hh12 + sep + pad2(parts12.minute);
       if (state.showSeconds) {
-        timeStr += ':' + pad2(parts12.second);
+        timeStr += sep + pad2(parts12.second);
       }
       timeStr += ' ' + (parts12.dayPeriod || '').toUpperCase();
     } else {
-      timeStr = pad2(parts24.hour) + ':' + pad2(parts24.minute);
+      timeStr = pad2(parts24.hour) + sep + pad2(parts24.minute);
       if (state.showSeconds) {
-        timeStr += ':' + pad2(parts24.second);
+        timeStr += sep + pad2(parts24.second);
       }
     }
 
@@ -191,11 +213,11 @@
     }
 
     var dateParts = [];
-    if (state.showWeekday) {
+    if (weekday) {
       dateParts.push((parts12.weekday || '').toUpperCase().slice(0, 3));
     }
     dateParts.push(pad2(parts12.day));
-    dateParts.push(state.monthNumeric
+    dateParts.push(monthNumeric
       ? monthNumberFor(parts12.month)
       : (parts12.month || '').toUpperCase().slice(0, 3));
     dateParts.push(parts12.year);
