@@ -29,8 +29,17 @@
   // Format modes
   // ---------------------------------------------------------------------
 
-  // Cycle order: 24h -> 12h (AM/PM) -> 24h+date -> 12h+date -> back to 24h.
-  var FORMAT_MODES = ['24H', '12H', '24H_DATE', '12H_DATE'];
+  // The display string is composed from independent, separately-persisted
+  // pieces rather than a fixed cycle of modes:
+  //   timeFormat:   '24H' | '12H'
+  //   datePosition: 'off'    -> time only
+  //                 'before' -> date, then time
+  //                 'after'  -> time, then date
+  //   showWeekday:  include the weekday abbreviation in the date
+  //   monthNumeric: month as a number (06) instead of a word (JUN)
+  //   showSeconds:  include seconds in the time
+  var TIME_FORMATS = ['24H', '12H'];
+  var DATE_POSITIONS = ['off', 'before', 'after'];
 
   var LOCAL_ZONE = 'LOCAL'; // special marker meaning "no explicit timeZone option"
 
@@ -47,12 +56,20 @@
     container: null,
     displayMount: null,
     formatButton: null,
+    datePositionSelect: null,
+    weekdayInput: null,
+    monthNumericInput: null,
+    secondsInput: null,
     timezoneSelect: null,
     titleInput: null,
     subtitleInput: null,
     titleEl: null,
     subtitleEl: null,
-    formatMode: FORMAT_MODES[0],
+    timeFormat: TIME_FORMATS[0],
+    datePosition: 'off',
+    showWeekday: true,
+    monthNumeric: false,
+    showSeconds: true,
     timezone: LOCAL_ZONE,
     title: '',
     subtitle: ''
@@ -140,61 +157,61 @@
     return lookup;
   }
 
-  // Formats "now" in the given timezone according to formatMode. Returns an
-  // uppercase string ready for the active digit renderer. The segment
-  // renderer supports digits, A-Z, ':', '.', and space; alternate renderers
-  // may support a narrower glyph set.
-  function formatNow(formatMode, timezone) {
-    var parts12 = getParts(timezone);
-    var parts24 = get24Parts(timezone);
+  // Maps a short month name ("Jun") to its two-digit number ("06").
+  function monthNumberFor(shortMonth) {
+    var idx = MONTH_ABBR.indexOf((shortMonth || '').toUpperCase().slice(0, 3));
+    return idx === -1 ? '00' : pad2(idx + 1);
+  }
 
-    var hh24 = pad2(parts24.hour);
-    var mm = pad2(parts24.minute);
-    var ss = pad2(parts24.second);
+  // Composes the display string from the current format pieces. Returns an
+  // uppercase string ready for the active digit renderer. The segment renderer
+  // supports digits, A-Z, ':', '.', and space; alternate renderers may support
+  // a narrower glyph set.
+  function formatNow() {
+    var parts12 = getParts(state.timezone);
+    var parts24 = get24Parts(state.timezone);
 
-    var hh12 = pad2(parts12.hour === '24' ? '12' : parts12.hour); // h12 already gives 1-12, guard just in case
-    var ampm = (parts12.dayPeriod || '').toUpperCase(); // 'AM' / 'PM'
-
-    var timeStr24 = hh24 + ':' + mm + ':' + ss;
-    var timeStr12 = hh12 + ':' + mm + ':' + ss + ' ' + ampm;
-
-    var weekday = (parts12.weekday || '').toUpperCase().slice(0, 3);
-    var month = (parts12.month || '').toUpperCase().slice(0, 3);
-    var day = pad2(parts12.day);
-    var year = parts12.year;
-    var dateStr = weekday + ' ' + day + ' ' + month + ' ' + year;
-
-    switch (formatMode) {
-      case '24H':
-        return timeStr24;
-      case '12H':
-        return timeStr12;
-      case '24H_DATE':
-        return dateStr + '  ' + timeStr24;
-      case '12H_DATE':
-        return dateStr + '  ' + timeStr12;
-      default:
-        return timeStr24;
+    var timeStr;
+    if (state.timeFormat === '12H') {
+      var hh12 = pad2(parts12.hour === '24' ? '12' : parts12.hour);
+      timeStr = hh12 + ':' + pad2(parts12.minute);
+      if (state.showSeconds) {
+        timeStr += ':' + pad2(parts12.second);
+      }
+      timeStr += ' ' + (parts12.dayPeriod || '').toUpperCase();
+    } else {
+      timeStr = pad2(parts24.hour) + ':' + pad2(parts24.minute);
+      if (state.showSeconds) {
+        timeStr += ':' + pad2(parts24.second);
+      }
     }
+
+    if (state.datePosition === 'off') {
+      return timeStr;
+    }
+
+    var dateParts = [];
+    if (state.showWeekday) {
+      dateParts.push((parts12.weekday || '').toUpperCase().slice(0, 3));
+    }
+    dateParts.push(pad2(parts12.day));
+    dateParts.push(state.monthNumeric
+      ? monthNumberFor(parts12.month)
+      : (parts12.month || '').toUpperCase().slice(0, 3));
+    dateParts.push(parts12.year);
+    var dateStr = dateParts.join(' ');
+
+    return state.datePosition === 'before'
+      ? dateStr + '  ' + timeStr
+      : timeStr + '  ' + dateStr;
   }
 
   // ---------------------------------------------------------------------
   // DOM construction
   // ---------------------------------------------------------------------
 
-  function formatButtonLabel(formatMode) {
-    switch (formatMode) {
-      case '24H':
-        return 'FORMAT: 24H';
-      case '12H':
-        return 'FORMAT: 12H';
-      case '24H_DATE':
-        return 'FORMAT: 24H + DATE';
-      case '12H_DATE':
-        return 'FORMAT: 12H + DATE';
-      default:
-        return 'FORMAT';
-    }
+  function formatButtonLabel(timeFormat) {
+    return timeFormat === '12H' ? 'FORMAT: 12H' : 'FORMAT: 24H';
   }
 
   function buildTimezoneOptions(selectEl, selectedZone) {
@@ -280,6 +297,38 @@
     formatButton.className = 'clock-view__format-btn';
     controls.appendChild(formatButton);
 
+    // Date position selector (off / date-then-time / time-then-date).
+    var dateLabel = document.createElement('label');
+    dateLabel.className = 'clock-view__field-label';
+    dateLabel.textContent = 'DATE:';
+    var datePositionSelect = document.createElement('select');
+    datePositionSelect.className = 'clock-view__timezone-select';
+    var DATE_OPTION_LABELS = { off: 'Off', before: 'Date, time', after: 'Time, date' };
+    for (var d = 0; d < DATE_POSITIONS.length; d++) {
+      var opt = document.createElement('option');
+      opt.value = DATE_POSITIONS[d];
+      opt.textContent = DATE_OPTION_LABELS[DATE_POSITIONS[d]];
+      datePositionSelect.appendChild(opt);
+    }
+    dateLabel.appendChild(datePositionSelect);
+    controls.appendChild(dateLabel);
+
+    // Weekday / seconds / numeric-month toggles.
+    function buildToggle(labelText, className) {
+      var label = document.createElement('label');
+      label.className = 'clock-view__toggle';
+      var input = document.createElement('input');
+      input.type = 'checkbox';
+      input.className = className;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(' ' + labelText));
+      controls.appendChild(label);
+      return input;
+    }
+    var weekdayInput = buildToggle('Weekday', 'clock-view__weekday-toggle');
+    var secondsInput = buildToggle('Seconds', 'clock-view__seconds-toggle');
+    var monthNumericInput = buildToggle('Month as number', 'clock-view__month-toggle');
+
     var timezoneLabel = document.createElement('label');
     timezoneLabel.className = 'clock-view__timezone-label';
     timezoneLabel.textContent = 'TIMEZONE:';
@@ -313,6 +362,10 @@
 
     state.displayMount = displayMount;
     state.formatButton = formatButton;
+    state.datePositionSelect = datePositionSelect;
+    state.weekdayInput = weekdayInput;
+    state.secondsInput = secondsInput;
+    state.monthNumericInput = monthNumericInput;
     state.timezoneSelect = timezoneSelect;
     state.titleInput = titleInput;
     state.subtitleInput = subtitleInput;
@@ -324,18 +377,41 @@
   // Event handling
   // ---------------------------------------------------------------------
 
+  // 'F' / the format button toggles between 24-hour and 12-hour time.
   function cycleFormat() {
-    var currentIndex = FORMAT_MODES.indexOf(state.formatMode);
-    var nextIndex = (currentIndex + 1) % FORMAT_MODES.length;
-    state.formatMode = FORMAT_MODES[nextIndex];
-    state.formatButton.textContent = formatButtonLabel(state.formatMode);
-    savePrefs({ clockFormat: state.formatMode });
+    state.timeFormat = state.timeFormat === '24H' ? '12H' : '24H';
+    state.formatButton.textContent = formatButtonLabel(state.timeFormat);
+    savePrefs({ clockTimeFormat: state.timeFormat });
     renderNow();
   }
 
   function onTimezoneChange() {
     state.timezone = state.timezoneSelect.value;
     savePrefs({ timezone: state.timezone });
+    renderNow();
+  }
+
+  function onDatePositionChange() {
+    state.datePosition = state.datePositionSelect.value;
+    savePrefs({ clockDatePosition: state.datePosition });
+    renderNow();
+  }
+
+  function onWeekdayChange() {
+    state.showWeekday = state.weekdayInput.checked;
+    savePrefs({ clockShowWeekday: state.showWeekday });
+    renderNow();
+  }
+
+  function onSecondsChange() {
+    state.showSeconds = state.secondsInput.checked;
+    savePrefs({ clockShowSeconds: state.showSeconds });
+    renderNow();
+  }
+
+  function onMonthNumericChange() {
+    state.monthNumeric = state.monthNumericInput.checked;
+    savePrefs({ clockMonthNumeric: state.monthNumeric });
     renderNow();
   }
 
@@ -403,7 +479,7 @@
     if (!state.initialized) {
       return;
     }
-    var str = formatNow(state.formatMode, state.timezone);
+    var str = formatNow();
     window.renderDigits(state.displayMount, str);
   }
 
@@ -417,7 +493,16 @@
     }
 
     var prefs = loadPrefs();
-    state.formatMode = FORMAT_MODES.indexOf(prefs.clockFormat) !== -1 ? prefs.clockFormat : FORMAT_MODES[0];
+    state.timeFormat = TIME_FORMATS.indexOf(prefs.clockTimeFormat) !== -1
+      ? prefs.clockTimeFormat
+      // Migrate the old combined clockFormat ('12H'/'12H_DATE' -> 12-hour).
+      : (typeof prefs.clockFormat === 'string' && prefs.clockFormat.indexOf('12H') === 0 ? '12H' : '24H');
+    state.datePosition = DATE_POSITIONS.indexOf(prefs.clockDatePosition) !== -1
+      ? prefs.clockDatePosition
+      : (typeof prefs.clockFormat === 'string' && prefs.clockFormat.indexOf('_DATE') !== -1 ? 'before' : 'off');
+    state.showWeekday = typeof prefs.clockShowWeekday === 'boolean' ? prefs.clockShowWeekday : true;
+    state.showSeconds = typeof prefs.clockShowSeconds === 'boolean' ? prefs.clockShowSeconds : true;
+    state.monthNumeric = prefs.clockMonthNumeric === true;
     state.timezone = typeof prefs.timezone === 'string' ? prefs.timezone : LOCAL_ZONE;
     state.title = typeof prefs.clockTitle === 'string' ? prefs.clockTitle : '';
     state.subtitle = typeof prefs.clockSubtitle === 'string' ? prefs.clockSubtitle : '';
@@ -425,8 +510,17 @@
     state.container = container;
     buildDom(container);
 
-    state.formatButton.textContent = formatButtonLabel(state.formatMode);
+    state.formatButton.textContent = formatButtonLabel(state.timeFormat);
     state.formatButton.addEventListener('click', cycleFormat);
+
+    state.datePositionSelect.value = state.datePosition;
+    state.datePositionSelect.addEventListener('change', onDatePositionChange);
+    state.weekdayInput.checked = state.showWeekday;
+    state.weekdayInput.addEventListener('change', onWeekdayChange);
+    state.secondsInput.checked = state.showSeconds;
+    state.secondsInput.addEventListener('change', onSecondsChange);
+    state.monthNumericInput.checked = state.monthNumeric;
+    state.monthNumericInput.addEventListener('change', onMonthNumericChange);
 
     buildTimezoneOptions(state.timezoneSelect, state.timezone);
     state.timezoneSelect.addEventListener('change', onTimezoneChange);

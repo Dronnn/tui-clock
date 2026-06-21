@@ -60,10 +60,13 @@
   // existing #view-timers id/container) is the Countdown mode.
   var MODE_KEYS = { c: 'clock', d: 'timers', t: 'timer' };
   var MODE_LABELS = { clock: 'CLOCK', timers: 'COUNTDOWN', timer: 'TIMER' };
+  var MODE_HOTKEYS = { clock: 'C', timers: 'D', timer: 'T' };
+  var MODE_ORDER = ['clock', 'timers', 'timer'];
   var DEFAULT_MODE = 'clock';
 
   var modeContainers = null; // populated in boot(): { clock, timers, timer }
-  var modeIndicatorEl = null;
+  var modeSwitchEl = null;    // header <nav> that holds the clickable mode buttons
+  var modeButtons = null;     // populated in buildModeSwitch(): { clock, timers, timer }
 
   function tickAll() {
     window.ClockView.tick();
@@ -282,12 +285,45 @@
     }
     window.TimersView.setPaneFocused(modeName === 'timers');
     window.TimerStopwatchView.setPaneFocused(modeName === 'timer');
-    if (modeIndicatorEl) {
-      var label = MODE_LABELS[modeName] || modeName.toUpperCase();
-      modeIndicatorEl.innerHTML = label + ' <span class="app-header__hint">(C/D/T to switch)</span>';
-    }
+    updateModeButtons(modeName);
     savePrefs({ activeMode: modeName });
     fitDisplays();
+  }
+
+  // Builds the header's clickable mode switcher: one button per mode, each
+  // labelled with its name + hotkey, wired to setActiveMode so the buttons and
+  // the C/D/T keys are equivalent.
+  function buildModeSwitch() {
+    if (!modeSwitchEl) {
+      return;
+    }
+    modeSwitchEl.innerHTML = '';
+    modeButtons = {};
+    for (var i = 0; i < MODE_ORDER.length; i++) {
+      (function (mode) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'app-header__mode-btn';
+        btn.innerHTML = MODE_LABELS[mode] +
+          ' <span class="app-header__hint">' + MODE_HOTKEYS[mode] + '</span>';
+        btn.addEventListener('click', function () {
+          setActiveMode(mode);
+        });
+        modeButtons[mode] = btn;
+        modeSwitchEl.appendChild(btn);
+      })(MODE_ORDER[i]);
+    }
+  }
+
+  function updateModeButtons(activeMode) {
+    if (!modeButtons) {
+      return;
+    }
+    for (var mode in modeButtons) {
+      if (Object.prototype.hasOwnProperty.call(modeButtons, mode)) {
+        modeButtons[mode].classList.toggle('is-active', mode === activeMode);
+      }
+    }
   }
 
   function cycleStyle(step) {
@@ -306,9 +342,28 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
       return;
     }
+    if (event.key === '?') {
+      if (window.HelpOverlay) {
+        window.HelpOverlay.toggle();
+      }
+      return;
+    }
     var keyName = event.key.toLowerCase();
     if (keyName === 'a') {
-      window.AlarmCorner.open();
+      // Toggle: a second press of A closes the alarm popover.
+      if (typeof window.AlarmCorner.toggle === 'function') {
+        window.AlarmCorner.toggle();
+      } else {
+        window.AlarmCorner.open();
+      }
+      return;
+    }
+    // 'R' toggles the auto-shuffle font mode.
+    if (keyName === 'r' || event.code === 'KeyR') {
+      if (window.SettingsPanel && typeof window.SettingsPanel.toggleShuffle === 'function') {
+        window.SettingsPanel.toggleShuffle();
+        tickAll();
+      }
       return;
     }
     // 'N' (next) / 'P' (previous) cycle the font/visual style. event.code
@@ -340,16 +395,25 @@
       timer: timerModeContainer
     };
 
-    modeIndicatorEl = document.getElementById('mode-indicator');
+    modeSwitchEl = document.getElementById('mode-switch');
+    buildModeSwitch();
 
     window.ClockView.init(clockContainer);
     window.TimersView.init(timersContainer);
     window.TimerStopwatchView.init(timerModeContainer);
     window.AlarmCorner.init(document.getElementById('alarm-corner'));
     window.SettingsPanel.init(document.getElementById('settings-panel'));
+    if (window.HelpOverlay) {
+      window.HelpOverlay.init();
+    }
     observeStyleChanges();
 
     document.addEventListener('keydown', onModeKeyDown);
+    // Auto-shuffle changes the style outside the normal tick; re-render + re-fit
+    // immediately when it does.
+    document.addEventListener('tuiclock:style-changed', function () {
+      tickAll();
+    });
 
     var prefs = loadPrefs();
     if (prefs.matrixBg && window.MatrixBG) {

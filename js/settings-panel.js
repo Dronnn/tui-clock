@@ -66,10 +66,18 @@
     toggleButton: null,
     dropdown: null,
     matrixInput: null,
+    shuffleInput: null,
     visualStyle: DEFAULT_STYLE,
     colorScheme: DEFAULT_COLOR,
-    matrixBg: false
+    matrixBg: false,
+    fontShuffle: false
   };
+
+  // Auto-shuffle timer handle (setTimeout id) and its bounds. When shuffle is
+  // on, the style jumps to a random figlet font every SHUFFLE_MIN..MAX ms.
+  var shuffleTimer = null;
+  var SHUFFLE_MIN_MS = 20000;
+  var SHUFFLE_MAX_MS = 30000;
 
   // ---------------------------------------------------------------------
   // Prefs persistence (read-merge-write so unrelated fields survive)
@@ -153,9 +161,8 @@
 
     label.appendChild(input);
     label.appendChild(document.createTextNode(labelText));
-    state.matrixInput = input;
 
-    return label;
+    return { label: label, input: input };
   }
 
   function buildDom(container) {
@@ -196,7 +203,15 @@
 
     var effectsGroup = document.createElement('div');
     effectsGroup.className = 'settings-panel__group';
-    effectsGroup.appendChild(buildCheckboxRow('Matrix background', state.matrixBg, onMatrixBgChange));
+
+    var matrixRow = buildCheckboxRow('Matrix background', state.matrixBg, onMatrixBgChange);
+    state.matrixInput = matrixRow.input;
+    effectsGroup.appendChild(matrixRow.label);
+
+    var shuffleRow = buildCheckboxRow('Shuffle fonts', state.fontShuffle, onShuffleChange);
+    state.shuffleInput = shuffleRow.input;
+    effectsGroup.appendChild(shuffleRow.label);
+
     dropdown.appendChild(effectsGroup);
 
     container.appendChild(dropdown);
@@ -282,6 +297,70 @@
     return STYLE_OPTIONS[next];
   }
 
+  // ---------------------------------------------------------------------
+  // Auto-shuffle: jump to a random figlet font on a randomized interval.
+  // ---------------------------------------------------------------------
+
+  function figletStyleValues() {
+    var values = [];
+    var order = window.FIGLET_FONT_ORDER || [];
+    for (var i = 0; i < order.length; i++) {
+      values.push('afont-' + order[i]);
+    }
+    return values;
+  }
+
+  function pickRandomFigletStyle() {
+    var values = figletStyleValues();
+    if (values.length === 0) {
+      return null;
+    }
+    // Avoid repeating the current style. If the only option is the current one,
+    // fall back to it rather than looping forever.
+    var candidates = values.filter(function (v) {
+      return v !== state.visualStyle;
+    });
+    var pool = candidates.length ? candidates : values;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function scheduleShuffle() {
+    var delay = SHUFFLE_MIN_MS + Math.random() * (SHUFFLE_MAX_MS - SHUFFLE_MIN_MS);
+    shuffleTimer = window.setTimeout(function () {
+      var next = pickRandomFigletStyle();
+      if (next) {
+        setStyle(next);
+        document.dispatchEvent(new CustomEvent('tuiclock:style-changed'));
+      }
+      scheduleShuffle();
+    }, delay);
+  }
+
+  function setShuffle(on) {
+    on = !!on;
+    state.fontShuffle = on;
+    if (shuffleTimer !== null) {
+      window.clearTimeout(shuffleTimer);
+      shuffleTimer = null;
+    }
+    if (on) {
+      scheduleShuffle();
+    }
+    if (state.shuffleInput) {
+      state.shuffleInput.checked = on;
+    }
+    savePrefs({ fontShuffle: on });
+  }
+
+  function toggleShuffle() {
+    setShuffle(!state.fontShuffle);
+    return state.fontShuffle;
+  }
+
+  function isShuffling() {
+    return state.fontShuffle;
+  }
+
   function onColorChange(value) {
     state.colorScheme = value;
     applyColor(value);
@@ -304,6 +383,10 @@
     savePrefs({ matrixBg: state.matrixBg });
   }
 
+  function onShuffleChange(value) {
+    setShuffle(value);
+  }
+
   // ---------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------
@@ -319,9 +402,14 @@
     state.visualStyle = isValidOption(STYLE_OPTIONS, prefs.visualStyle) ? prefs.visualStyle : DEFAULT_STYLE;
     state.colorScheme = isValidOption(COLOR_OPTIONS, prefs.colorScheme) ? prefs.colorScheme : DEFAULT_COLOR;
     state.matrixBg = prefs.matrixBg === true;
+    state.fontShuffle = prefs.fontShuffle === true;
 
     state.container = container;
     buildDom(container);
+
+    if (state.fontShuffle) {
+      setShuffle(true);
+    }
 
     applyStyle(state.visualStyle);
     applyColor(state.colorScheme);
@@ -347,6 +435,9 @@
 
   window.SettingsPanel = {
     init: init,
-    cycleStyle: cycleStyle
+    cycleStyle: cycleStyle,
+    setShuffle: setShuffle,
+    toggleShuffle: toggleShuffle,
+    isShuffling: isShuffling
   };
 })();

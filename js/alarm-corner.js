@@ -520,6 +520,7 @@
   window.AlarmCorner = {
     init: init,
     open: open,
+    toggle: togglePopover,
     tick: tick
   };
 })();

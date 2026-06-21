@@ -141,6 +141,10 @@
     nameInput.className = 'timers-view__form-input';
     nameInput.placeholder = 'Timer name';
     nameInput.maxLength = 40;
+    // Default so the user can just press Start. defaultValue is set too so the
+    // value survives form.reset() after each created countdown.
+    nameInput.value = 'Timer';
+    nameInput.defaultValue = 'Timer';
     nameLabel.appendChild(nameInput);
 
     var titleLabel = document.createElement('label');
@@ -170,6 +174,8 @@
     durationInput.type = 'text';
     durationInput.className = 'timers-view__form-input';
     durationInput.placeholder = '00:05:00';
+    durationInput.value = '00:05:00';
+    durationInput.defaultValue = '00:05:00';
     durationLabel.appendChild(durationInput);
 
     var errorEl = document.createElement('div');
