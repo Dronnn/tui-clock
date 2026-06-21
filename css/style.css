@@ -109,11 +109,12 @@ body {
   gap: 0.5rem;
 }
 
+/* Match the terminal look of the timer Stop/Delete buttons. */
 .app-header__mode-btn {
   appearance: none;
   background: var(--bg);
   border: 1px solid var(--border);
-  color: var(--fg-muted);
+  color: var(--fg);
   font-family: var(--font-mono);
   font-size: 0.8rem;
   letter-spacing: 0.08em;
@@ -127,12 +128,17 @@ body {
 .app-header__mode-btn:hover {
   color: var(--fg);
   border-color: var(--fg-muted);
+  box-shadow: 0 0 6px var(--glow);
 }
 
 .app-header__mode-btn.is-active {
   color: var(--fg);
   border-color: var(--fg);
-  box-shadow: 0 0 6px var(--glow);
+  box-shadow: 0 0 8px var(--glow);
+}
+
+.app-header__mode-btn .app-header__hint {
+  color: var(--fg-muted);
 }
 
 /* Clock format toggles (weekday / seconds / numeric month) in the control row. */
@@ -1342,8 +1348,10 @@ main {
   z-index: 1000;
 }
 
-/* The long font list flows in three columns to stay wide and short. */
-.settings-panel__group--columns {
+/* The long font list flows in three columns to stay wide and short. The
+   doubled class keeps this ahead of the later `.settings-panel__group`
+   (display:flex) rule. */
+.settings-panel__group.settings-panel__group--columns {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   column-gap: 1rem;
@@ -1508,10 +1516,14 @@ main {
 .viewfinder-frame {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
   width: max-content;
   max-width: none;
-  padding: 0.4rem;
+  /* Uniform gap between the (ink-trimmed) text and the corner marks, the same
+     for every font. */
+  padding: 0.7rem;
 }
 
 .viewfinder-frame__corner {

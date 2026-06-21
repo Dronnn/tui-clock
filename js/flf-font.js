@@ -50,17 +50,56 @@
     return entry.name;
   }
 
+  // Trims the figlet art so its bounding box hugs the visible "ink": drops
+  // leading/trailing blank lines and the common left/right blank margin. Fonts
+  // carry different amounts of internal padding, so without this the framed
+  // text would sit off-centre (often pushed to the top) and the frame's gap
+  // would vary font-to-font. After trimming, a uniform CSS padding gives every
+  // font the same gap and keeps the text centred.
+  function trimArt(art) {
+    var lines = art.split('\n');
+    while (lines.length && lines[0].trim() === '') {
+      lines.shift();
+    }
+    while (lines.length && lines[lines.length - 1].trim() === '') {
+      lines.pop();
+    }
+    if (!lines.length) {
+      return '';
+    }
+    var minLead = Infinity;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === '') {
+        continue; // ignore interior blank lines when measuring the left margin
+      }
+      var lead = lines[i].length - lines[i].replace(/^ +/, '').length;
+      if (lead < minLead) {
+        minLead = lead;
+      }
+    }
+    if (minLead === Infinity || minLead < 0) {
+      minLead = 0;
+    }
+    for (var j = 0; j < lines.length; j++) {
+      // Drop the shared left indent and any trailing spaces so the widest
+      // inked line defines the box width.
+      lines[j] = lines[j].slice(minLead).replace(/\s+$/, '');
+    }
+    return lines.join('\n');
+  }
+
   function renderArt(fontName, str) {
     // A very large width disables figlet's word-wrapping. Without it, wide
     // fonts wrap (or fail to empty) on long space-less strings like
     // "0123456789"; the app does its own fit-to-viewport scaling instead.
-    return window.figlet.textSync(str, {
+    var art = window.figlet.textSync(str, {
       font: fontName,
       horizontalLayout: 'default',
       verticalLayout: 'default',
       width: 100000,
       whitespaceBreak: false
     });
+    return trimArt(art);
   }
 
   function buildAll(container, str, key, fontName) {
