@@ -22,25 +22,34 @@
 (function () {
   'use strict';
 
-  var STYLE_OPTIONS = [
+  // Non-figlet styles (the bitmap/segment renderers). The figlet fonts are
+  // appended dynamically from the embedded FIGlet data so adding a font to
+  // figlet-fonts.js automatically surfaces it here and in the N-hotkey cycle.
+  var BASE_STYLE_OPTIONS = [
     { value: 'flat', label: 'Flat' },
     { value: '3d', label: '3D' },
     { value: 'crt', label: 'CRT' },
     { value: 'glitch', label: 'Block 3D' },
     { value: 'block-stack', label: 'Block Stack' },
     { value: 'dash', label: 'Dash' },
-    { value: 'afont-standard', label: 'Figlet: Standard' },
-    { value: 'afont-big', label: 'Figlet: Big' },
-    { value: 'afont-banner', label: 'Figlet: Banner' },
-    { value: 'afont-ansishadow', label: 'Figlet: ANSI Shadow' },
-    { value: 'afont-ansiregular', label: 'Figlet: ANSI Regular' },
-    { value: 'afont-mini', label: 'Figlet: Mini' },
-    { value: 'afont-slant', label: 'Figlet: Slant' },
-    { value: 'afont-doom', label: 'Figlet: Doom' },
-    { value: 'afont-small', label: 'Figlet: Small' },
-    { value: 'afont-digital', label: 'Figlet: Digital' },
     { value: 'dot-matrix', label: 'Dot Matrix' }
   ];
+
+  // Populated in init() = BASE_STYLE_OPTIONS + one entry per embedded FIGlet
+  // font. Mutable so init() can rebuild it once the font data is available.
+  var STYLE_OPTIONS = BASE_STYLE_OPTIONS.slice();
+
+  function buildStyleOptions() {
+    var options = BASE_STYLE_OPTIONS.slice();
+    if (window.FlfFont && typeof window.FlfFont.order === 'function') {
+      var order = window.FlfFont.order();
+      for (var i = 0; i < order.length; i++) {
+        var key = order[i];
+        options.push({ value: 'afont-' + key, label: 'Figlet: ' + window.FlfFont.label(key) });
+      }
+    }
+    return options;
+  }
 
   var COLOR_OPTIONS = [
     { value: 'amber', label: 'Amber' },
@@ -227,10 +236,49 @@
     }
   }
 
-  function onStyleChange(value) {
+  // Applies a style value everywhere: <html> attribute, persisted prefs, and
+  // (so the dropdown stays in sync when the style is changed via hotkey) the
+  // matching style radio's checked state.
+  function setStyle(value) {
     state.visualStyle = value;
     applyStyle(value);
     savePrefs({ visualStyle: value });
+    syncStyleRadio(value);
+  }
+
+  function syncStyleRadio(value) {
+    if (!state.dropdown) {
+      return;
+    }
+    var radios = state.dropdown.querySelectorAll('input[name="settings-panel-style"]');
+    for (var i = 0; i < radios.length; i++) {
+      radios[i].checked = radios[i].value === value;
+    }
+  }
+
+  function onStyleChange(value) {
+    setStyle(value);
+  }
+
+  // Advances the visual style to the next (step > 0) or previous (step < 0)
+  // entry in STYLE_OPTIONS, wrapping around. Bound to the 'N' hotkey by app.js
+  // so the user can flip through fonts/designs without opening settings.
+  function cycleStyle(step) {
+    var n = STYLE_OPTIONS.length;
+    if (n === 0) {
+      return null;
+    }
+    var idx = 0;
+    for (var i = 0; i < n; i++) {
+      if (STYLE_OPTIONS[i].value === state.visualStyle) {
+        idx = i;
+        break;
+      }
+    }
+    var delta = step || 1;
+    var next = ((idx + delta) % n + n) % n;
+    setStyle(STYLE_OPTIONS[next].value);
+    return STYLE_OPTIONS[next];
   }
 
   function onColorChange(value) {
@@ -264,6 +312,8 @@
       throw new Error('SettingsPanel.init: container element is required');
     }
 
+    STYLE_OPTIONS = buildStyleOptions();
+
     var prefs = loadPrefs();
     state.visualStyle = isValidOption(STYLE_OPTIONS, prefs.visualStyle) ? prefs.visualStyle : DEFAULT_STYLE;
     state.colorScheme = isValidOption(COLOR_OPTIONS, prefs.colorScheme) ? prefs.colorScheme : DEFAULT_COLOR;
@@ -295,6 +345,7 @@
   }
 
   window.SettingsPanel = {
-    init: init
+    init: init,
+    cycleStyle: cycleStyle
   };
 })();

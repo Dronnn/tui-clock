@@ -6,21 +6,15 @@
 (function () {
   'use strict';
 
+  // A style is a valid ASCII/figlet font style if it is "afont-<key>" with a
+  // non-empty key. The actual renderer (real FIGlet via FlfFont, or the legacy
+  // hand-made AsciiFont) is chosen at dispatch time based on which one knows
+  // the key.
   function asciiFontKey(style) {
     if (typeof style !== 'string' || style.indexOf('afont-') !== 0) {
       return null;
     }
-
-    var fontKey = style.slice('afont-'.length);
-    if (!fontKey) {
-      return null;
-    }
-
-    if (!window.AsciiFont || !window.AsciiFont.FONTS) {
-      return fontKey;
-    }
-
-    return Object.prototype.hasOwnProperty.call(window.AsciiFont.FONTS, fontKey) ? fontKey : null;
+    return style.slice('afont-'.length) || null;
   }
 
   function activeRenderer() {
@@ -79,10 +73,18 @@
     }
 
     if (renderer.indexOf('afont-') === 0) {
+      var fontKey = renderer.slice('afont-'.length);
+      // Prefer the real FIGlet engine (full ASCII charset, exact patorjk
+      // output); fall back to the legacy hand-made glyphs only if FlfFont
+      // doesn't know this font.
+      if (window.FlfFont && typeof window.FlfFont.has === 'function' && window.FlfFont.has(fontKey)) {
+        window.FlfFont.render(container, str, fontKey);
+        return;
+      }
       if (!window.AsciiFont || typeof window.AsciiFont.render !== 'function') {
         throw new Error('renderDigits: AsciiFont renderer is not available');
       }
-      window.AsciiFont.render(container, str, renderer.slice('afont-'.length));
+      window.AsciiFont.render(container, str, fontKey);
       return;
     }
 

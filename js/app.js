@@ -304,6 +304,15 @@
       window.AlarmCorner.open();
       return;
     }
+    // 'N' (next) cycles the font/visual style. event.code guards against
+    // non-Latin keyboard layouts where the physical N key yields another char.
+    if (keyName === 'n' || event.code === 'KeyN') {
+      if (window.SettingsPanel && typeof window.SettingsPanel.cycleStyle === 'function') {
+        window.SettingsPanel.cycleStyle(1);
+        tickAll(); // immediate re-render + re-fit for the new font
+      }
+      return;
+    }
     var modeName = MODE_KEYS[keyName];
     if (!modeName) {
       return;
