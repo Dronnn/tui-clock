@@ -2323,3 +2323,132 @@ main {
   white-space: pre;
   text-shadow: 0 0 calc(var(--cell-size) * 0.5) var(--glow);
 }
+
+/* =====================================================================
+   Responsive layer — phones & short (landscape) viewports
+   ---------------------------------------------------------------------
+   Everything below lives inside @media queries; the desktop layout above
+   is left completely untouched. Three tiers:
+     - max-width: 720px  -> header wraps to two rows (before it can overlap)
+     - max-width: 600px  -> true phones: shrink the clock frame, drop the
+                            two secondary widgets, keep the fonts list legible
+     - max-height: 560px (and not a wide desktop) -> pull in the frame's
+                            vertical insets so the fixed frame can't collapse
+   ===================================================================== */
+
+/* --- Header: two rows once a single centered row would overlap --- */
+@media (max-width: 720px) {
+  /* The wrapped header is taller than the desktop strip; bump the shared
+     height var so `main` and the clock frame's top inset stay in sync. */
+  :root {
+    --app-header-height: 4.75rem;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  /* Row 1: the mode switcher, centered, on its own full-width line. */
+  .app-header__modes {
+    order: 1;
+    flex-basis: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Row 2: zoom on the left, the settings icons pushed to the right. Both
+     leave the absolute/`right:0` positioning they use on desktop and flow
+     in normal order so they share the second line. */
+  .app-header__zoom {
+    position: static;
+    order: 2;
+  }
+
+  .settings-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    order: 3;
+    margin-left: auto;
+  }
+
+  /* Hotkey hints (C/D/T) are useless without a keyboard — reclaim the space. */
+  .app-header__mode-btn .app-header__hint {
+    display: none;
+  }
+
+  .app-header__mode-btn {
+    padding: 0.3rem 0.6rem;
+  }
+}
+
+/* --- True phones: fit the clock frame to the screen, drop the widgets --- */
+@media (max-width: 600px) {
+  /* The two glanceable mini-panes have no room beside the focused view on a
+     phone; hiding them removes the only real overlap source. They reappear
+     as the focused pane when their mode is selected. */
+  .pane--minor {
+    display: none;
+  }
+
+  /* Frame hugs the screen instead of sitting 2cm/6cm/4cm in (which leaves
+     almost nothing on a 360-402px wide phone). Bottom inset clears the
+     fixed alarm corner + help button. */
+  .pane--focused .viewfinder-frame {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: calc(var(--app-header-height) + 0.75rem);
+    bottom: 3.5rem;
+    padding: 0.85rem;
+  }
+
+  .pane--focused .viewfinder-frame__corner {
+    width: 30px;
+    height: 30px;
+  }
+  .pane--focused .viewfinder-frame__corner--tl {
+    border-top-width: 6px;
+    border-left-width: 6px;
+  }
+  .pane--focused .viewfinder-frame__corner--tr {
+    border-top-width: 6px;
+    border-right-width: 6px;
+  }
+  .pane--focused .viewfinder-frame__corner--bl {
+    border-bottom-width: 6px;
+    border-left-width: 6px;
+  }
+  .pane--focused .viewfinder-frame__corner--br {
+    border-bottom-width: 6px;
+    border-right-width: 6px;
+  }
+
+  /* Fonts list: stop forcing 34rem and drop to two columns so names stay
+     readable within the viewport-capped dropdown. */
+  .settings-panel__dropdown--fonts {
+    min-width: 0;
+  }
+  .settings-panel__group.settings-panel__group--columns {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 0.6rem;
+  }
+}
+
+/* --- Short / landscape viewports: keep the fixed frame from collapsing.
+   Scoped to <=1100px wide so a short *desktop* window is never affected. --- */
+@media (max-height: 560px) and (max-width: 1100px) {
+  /* No vertical room for the mini-panes beside a usable frame here, and the
+     pulled-up frame top would otherwise sit on top of them. */
+  .pane--minor {
+    display: none;
+  }
+  .pane--focused .viewfinder-frame {
+    top: calc(var(--app-header-height) + 0.75rem);
+    bottom: 3.25rem;
+  }
+}
