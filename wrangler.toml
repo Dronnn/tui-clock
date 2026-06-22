@@ -1,12 +1,15 @@
-# Cloudflare configuration for deploying this static site as a Pages project.
+# Cloudflare configuration for deploying this static site.
 #
-# This is a plain static site (HTML/CSS/JS, no build step), so the whole repo
-# root is the output directory.
+# This is a plain static site (HTML/CSS/JS, no build step), served as a Worker
+# with Static Assets — the project's deploy command is `npx wrangler deploy`.
+# `assets.directory = "./"` makes the repo root the served asset directory, so
+# index.html is the site root. No Worker script (`main`) is needed.
 #
-# Deploy from the CLI:    npx wrangler pages deploy .
-# Or connect the GitHub repo in the Cloudflare Pages dashboard with an empty
-# build command and "/" as the output directory.
+# `name` must match the Cloudflare project/worker name so the deploy updates the
+# existing "clock" worker (and its clock.mrmaier.com domain).
 
-name = "timer"
-pages_build_output_dir = "."
+name = "clock"
 compatibility_date = "2025-11-01"
+
+[assets]
+directory = "./"

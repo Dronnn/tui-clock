@@ -1,0 +1,12 @@
+# Files excluded from the deployed Static Assets (gitignore-style patterns).
+# Keep the public site (index.html, css/, js/) and drop tooling/source/docs.
+.git
+docs
+logs
+tools
+tests
+assets/flf
+wrangler.toml
+.assetsignore
+.gitignore
+*.md
