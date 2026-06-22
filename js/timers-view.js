@@ -211,12 +211,9 @@
     form.addEventListener('submit', function (event) {
       event.preventDefault();
 
-      var name = nameInput.value.trim();
-      if (!name) {
-        setError('Name is required.');
-        nameInput.focus();
-        return;
-      }
+      // Name is optional — fall back to a default so the user can just set a
+      // duration and press Start.
+      var name = nameInput.value.trim() || 'Timer';
 
       var ms = parseDurationToMs(durationInput.value);
       if (ms === null) {

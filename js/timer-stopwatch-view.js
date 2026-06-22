@@ -85,6 +85,9 @@
     nameInput.className = 'timer-stopwatch-view__form-input';
     nameInput.placeholder = 'Stopwatch name';
     nameInput.maxLength = 40;
+    // Default so the user can just press Start.
+    nameInput.value = 'Stopwatch';
+    nameInput.defaultValue = 'Stopwatch';
     nameLabel.appendChild(nameInput);
 
     var titleLabel = document.createElement('label');
@@ -139,12 +142,9 @@
     form.addEventListener('submit', function (event) {
       event.preventDefault();
 
-      var name = nameInput.value.trim();
-      if (!name) {
-        setError('Name is required.');
-        nameInput.focus();
-        return;
-      }
+      // Name is optional — fall back to a default so the user can just press
+      // Start.
+      var name = nameInput.value.trim() || 'Stopwatch';
 
       var timer;
       try {
