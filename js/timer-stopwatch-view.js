@@ -86,8 +86,8 @@
     nameInput.placeholder = 'Stopwatch name';
     nameInput.maxLength = 40;
     // Default so the user can just press Start.
-    nameInput.value = 'Stopwatch';
-    nameInput.defaultValue = 'Stopwatch';
+    nameInput.value = 'Timer';
+    nameInput.defaultValue = 'Timer';
     nameLabel.appendChild(nameInput);
 
     var titleLabel = document.createElement('label');
@@ -144,7 +144,7 @@
 
       // Name is optional — fall back to a default so the user can just press
       // Start.
-      var name = nameInput.value.trim() || 'Stopwatch';
+      var name = nameInput.value.trim() || 'Timer';
 
       var timer;
       try {

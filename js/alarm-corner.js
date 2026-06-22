@@ -37,6 +37,31 @@
     return n < 10 ? '0' + n : String(n);
   }
 
+  // Parses a typed time into a canonical "HH:MM" 24-hour string, or null if it
+  // isn't a valid time. Tolerant: accepts "9:5", "9.05", "0900", "12:00" etc.
+  function normalizeTime(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) {
+      return null;
+    }
+    var h;
+    var m;
+    var match = s.match(/^(\d{1,2})[:.\s]?(\d{2})$/);
+    if (match) {
+      h = Number(match[1]);
+      m = Number(match[2]);
+    } else if (/^\d{1,2}$/.test(s)) {
+      h = Number(s);
+      m = 0;
+    } else {
+      return null;
+    }
+    if (h < 0 || h > 23 || m < 0 || m > 59) {
+      return null;
+    }
+    return pad2(h) + ':' + pad2(m);
+  }
+
   function describeDays(days) {
     if (!Array.isArray(days) || days.length === 0) {
       return '(no days)';
@@ -119,10 +144,16 @@
     var timeLabel = document.createElement('label');
     timeLabel.className = 'alarm-corner__form-label';
     timeLabel.textContent = 'TIME';
+    // A plain text "HH:MM" field rather than <input type="time">: the native
+    // time widget's value/validation depends on the browser locale and can
+    // reject a plainly-typed "12:00" with "invalid value". We parse it
+    // ourselves (normalizeTime) so any 24-hour HH:MM is accepted.
     var timeInput = document.createElement('input');
-    timeInput.type = 'time';
+    timeInput.type = 'text';
     timeInput.className = 'alarm-corner__time-input';
-    timeInput.required = true;
+    timeInput.placeholder = 'HH:MM';
+    timeInput.inputMode = 'numeric';
+    timeInput.maxLength = 5;
     timeLabel.appendChild(timeInput);
 
     var daysWrap = document.createElement('div');
@@ -235,11 +266,13 @@
       event.preventDefault();
       clearError();
 
-      var time = timeInput.value;
+      var time = normalizeTime(timeInput.value);
       if (!time) {
-        showError('Please choose a time for the alarm.');
+        showError('Enter the time as HH:MM (24-hour), e.g. 12:00.');
+        timeInput.focus();
         return;
       }
+      timeInput.value = time;
 
       var selectedDays = dayChips
         .filter(function (chip) { return chip.classList.contains('is-active'); })

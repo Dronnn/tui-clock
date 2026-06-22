@@ -143,8 +143,8 @@
     nameInput.maxLength = 40;
     // Default so the user can just press Start. defaultValue is set too so the
     // value survives form.reset() after each created countdown.
-    nameInput.value = 'Timer';
-    nameInput.defaultValue = 'Timer';
+    nameInput.value = 'Countdown timer';
+    nameInput.defaultValue = 'Countdown timer';
     nameLabel.appendChild(nameInput);
 
     var titleLabel = document.createElement('label');
@@ -213,7 +213,7 @@
 
       // Name is optional — fall back to a default so the user can just set a
       // duration and press Start.
-      var name = nameInput.value.trim() || 'Timer';
+      var name = nameInput.value.trim() || 'Countdown timer';
 
       var ms = parseDurationToMs(durationInput.value);
       if (ms === null) {

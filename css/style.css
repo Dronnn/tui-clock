@@ -619,7 +619,10 @@ main {
 }
 
 .timers-view__focused-display {
-  --cell-size: 18px;
+  /* A modest 18px on roomy screens, but shrinks with the responsive
+     --root-cell-size (set by app.js's fit) so the big digits never overflow
+     the pane and collide with the corner widgets on small windows. */
+  --cell-size: min(18px, calc(var(--root-cell-size, 13px) * 1.4));
   flex: 0 0 auto;
   width: max-content;
   max-width: none;
@@ -791,7 +794,9 @@ main {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  /* Breathing room above (the digits/status) and below (the new-timer form /
+     corner widgets) so the buttons never sit flush against them. */
+  margin: 1.5rem 0;
 }
 
 /* The Stop button (dismiss the completion flash) reads as the primary action
@@ -842,7 +847,7 @@ main {
 }
 
 .timer-stopwatch-view__focused-display {
-  --cell-size: 18px;
+  --cell-size: min(18px, calc(var(--root-cell-size, 13px) * 1.4));
   flex: 0 0 auto;
   width: max-content;
   max-width: none;
