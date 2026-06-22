@@ -63,6 +63,7 @@
   var state = {
     initialized: false,
     container: null,
+    menus: [],
     toggleButton: null,
     dropdown: null,
     fontsButton: null,
@@ -192,48 +193,56 @@
     return el;
   }
 
+  // Each setting is its own button + dropdown in the header, all sharing the
+  // one-open-at-a-time model. Creates the pair, registers it for the toggle/
+  // close logic, wires the button, and returns the (empty) dropdown to fill.
+  function buildMenu(container, label, ariaLabel, isFonts) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'settings-panel__toggle' + (isFonts ? ' settings-panel__toggle--fonts' : '');
+    button.setAttribute('aria-label', ariaLabel);
+    button.textContent = label;
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'settings-panel__dropdown' + (isFonts ? ' settings-panel__dropdown--fonts' : '');
+
+    container.appendChild(button);
+    container.appendChild(dropdown);
+
+    state.menus.push({ button: button, dropdown: dropdown });
+    button.addEventListener('click', function (event) {
+      event.stopPropagation();
+      toggleMenu(dropdown, button);
+    });
+
+    return { button: button, dropdown: dropdown };
+  }
+
   function buildDom(container) {
     container.innerHTML = '';
     container.className = 'settings-panel';
+    state.menus = [];
 
-    // ---- Fonts menu (its own button, left of the gear) -----------------
-    var fontsButton = document.createElement('button');
-    fontsButton.type = 'button';
-    fontsButton.className = 'settings-panel__toggle settings-panel__toggle--fonts';
-    fontsButton.setAttribute('aria-label', 'Fonts');
-    fontsButton.textContent = 'Aa';
-    container.appendChild(fontsButton);
-
-    var fontsDropdown = document.createElement('div');
-    fontsDropdown.className = 'settings-panel__dropdown settings-panel__dropdown--fonts';
-
-    fontsDropdown.appendChild(buildGroupLabel('Font'));
+    // Fonts (left-most): the font list only.
+    var fonts = buildMenu(container, 'Aa', 'Fonts', true);
+    fonts.dropdown.appendChild(buildGroupLabel('Font'));
     var styleGroup = buildRadioGroup('settings-panel-style', STYLE_OPTIONS, state.visualStyle, onStyleChange);
     styleGroup.classList.add('settings-panel__group--columns');
-    fontsDropdown.appendChild(styleGroup);
+    fonts.dropdown.appendChild(styleGroup);
 
-    container.appendChild(fontsDropdown);
+    // Color.
+    var color = buildMenu(container, '◑', 'Color', false);
+    color.dropdown.appendChild(buildGroupLabel('Color'));
+    color.dropdown.appendChild(buildRadioGroup('settings-panel-color', COLOR_OPTIONS, state.colorScheme, onColorChange));
 
-    // ---- Settings menu (the gear) --------------------------------------
-    var toggleButton = document.createElement('button');
-    toggleButton.type = 'button';
-    toggleButton.className = 'settings-panel__toggle';
-    toggleButton.setAttribute('aria-label', 'Settings');
-    toggleButton.textContent = '⚙';
-    container.appendChild(toggleButton);
+    // Monospace.
+    var mono = buildMenu(container, '▦', 'Monospace', false);
+    mono.dropdown.appendChild(buildGroupLabel('Monospace'));
+    mono.dropdown.appendChild(buildRadioGroup('settings-panel-mono', MONO_OPTIONS, state.monoMode, onMonoChange));
 
-    var dropdown = document.createElement('div');
-    dropdown.className = 'settings-panel__dropdown';
-
-    dropdown.appendChild(buildGroupLabel('Color'));
-    var colorGroup = buildRadioGroup('settings-panel-color', COLOR_OPTIONS, state.colorScheme, onColorChange);
-    dropdown.appendChild(colorGroup);
-
-    dropdown.appendChild(buildGroupLabel('Monospace'));
-    var monoGroup = buildRadioGroup('settings-panel-mono', MONO_OPTIONS, state.monoMode, onMonoChange);
-    dropdown.appendChild(monoGroup);
-
-    dropdown.appendChild(buildGroupLabel('Effects'));
+    // Effects.
+    var effects = buildMenu(container, '✦', 'Effects', false);
+    effects.dropdown.appendChild(buildGroupLabel('Effects'));
     var effectsGroup = document.createElement('div');
     effectsGroup.className = 'settings-panel__group';
 
@@ -249,56 +258,53 @@
     state.keepAwakeInput = keepAwakeRow.input;
     effectsGroup.appendChild(keepAwakeRow.label);
 
-    dropdown.appendChild(effectsGroup);
+    effects.dropdown.appendChild(effectsGroup);
 
-    // Mount the clock's format controls here (they are built by ClockView but
-    // belong in this menu, not under the clock). ClockView is initialized
-    // before SettingsPanel, so getControls() is available.
+    // Settings (the gear, right-most): the clock format controls (built by
+    // ClockView, which is initialized before SettingsPanel).
+    var gear = buildMenu(container, '⚙', 'Settings', false);
     if (window.ClockView && typeof window.ClockView.getControls === 'function') {
       var clockControls = window.ClockView.getControls();
       if (clockControls) {
-        dropdown.appendChild(buildGroupLabel('Clock'));
+        gear.dropdown.appendChild(buildGroupLabel('Clock'));
         clockControls.classList.add('settings-panel__clock-controls');
-        dropdown.appendChild(clockControls);
+        gear.dropdown.appendChild(clockControls);
       }
     }
 
-    container.appendChild(dropdown);
-
-    state.fontsButton = fontsButton;
-    state.fontsDropdown = fontsDropdown;
-    state.toggleButton = toggleButton;
-    state.dropdown = dropdown;
+    state.fontsButton = fonts.button;
+    state.fontsDropdown = fonts.dropdown;
+    state.toggleButton = gear.button;
+    state.dropdown = gear.dropdown;
   }
 
   // ---------------------------------------------------------------------
   // Event handling
   // ---------------------------------------------------------------------
 
-  // Both menus share one open-at-a-time model: opening one closes the other.
+  // All menus share one open-at-a-time model: opening one closes the rest.
   function closeMenus() {
-    state.dropdown.classList.remove('is-open');
-    state.toggleButton.classList.remove('is-active');
-    state.fontsDropdown.classList.remove('is-open');
-    state.fontsButton.classList.remove('is-active');
+    for (var i = 0; i < state.menus.length; i++) {
+      state.menus[i].dropdown.classList.remove('is-open');
+      state.menus[i].button.classList.remove('is-active');
+    }
+  }
+
+  function toggleMenu(dropdown, button) {
+    var open = dropdown.classList.contains('is-open');
+    closeMenus();
+    if (!open) {
+      dropdown.classList.add('is-open');
+      button.classList.add('is-active');
+    }
   }
 
   function toggleSettings() {
-    var open = state.dropdown.classList.contains('is-open');
-    closeMenus();
-    if (!open) {
-      state.dropdown.classList.add('is-open');
-      state.toggleButton.classList.add('is-active');
-    }
+    toggleMenu(state.dropdown, state.toggleButton);
   }
 
   function toggleFonts() {
-    var open = state.fontsDropdown.classList.contains('is-open');
-    closeMenus();
-    if (!open) {
-      state.fontsDropdown.classList.add('is-open');
-      state.fontsButton.classList.add('is-active');
-    }
+    toggleMenu(state.fontsDropdown, state.fontsButton);
   }
 
   function onDocumentClick(event) {
@@ -318,10 +324,10 @@
   }
 
   function syncStyleRadio(value) {
-    if (!state.dropdown) {
+    if (!state.container) {
       return;
     }
-    var radios = state.dropdown.querySelectorAll('input[name="settings-panel-style"]');
+    var radios = state.container.querySelectorAll('input[name="settings-panel-style"]');
     for (var i = 0; i < radios.length; i++) {
       radios[i].checked = radios[i].value === value;
     }
@@ -420,8 +426,8 @@
     state.colorScheme = value;
     applyColor(value);
     savePrefs({ colorScheme: value });
-    if (state.dropdown) {
-      var radios = state.dropdown.querySelectorAll('input[name="settings-panel-color"]');
+    if (state.container) {
+      var radios = state.container.querySelectorAll('input[name="settings-panel-color"]');
       for (var i = 0; i < radios.length; i++) {
         radios[i].checked = radios[i].value === value;
       }
@@ -482,8 +488,8 @@
     state.monoMode = value;
     applyMono(value);
     savePrefs({ monoMode: value });
-    if (state.dropdown) {
-      var radios = state.dropdown.querySelectorAll('input[name="settings-panel-mono"]');
+    if (state.container) {
+      var radios = state.container.querySelectorAll('input[name="settings-panel-mono"]');
       for (var i = 0; i < radios.length; i++) {
         radios[i].checked = radios[i].value === value;
       }
@@ -588,15 +594,6 @@
     applyStyle(state.visualStyle);
     applyColor(state.colorScheme);
     applyMono(state.monoMode);
-
-    state.toggleButton.addEventListener('click', function (event) {
-      event.stopPropagation();
-      toggleSettings();
-    });
-    state.fontsButton.addEventListener('click', function (event) {
-      event.stopPropagation();
-      toggleFonts();
-    });
 
     document.addEventListener('click', onDocumentClick);
     document.addEventListener('visibilitychange', onVisibilityChange);

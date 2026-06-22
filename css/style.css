@@ -1361,20 +1361,24 @@ main {
   display: none;
   flex-direction: column;
   gap: 0.85rem;
-  min-width: 11rem;
+  min-width: 12rem;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.85rem;
   box-shadow: 0 0 calc(var(--cell-size) * 1.2) var(--glow);
-  /* Wide-and-short rather than narrow-and-tall, so it never runs down into the
-     bottom-right alarm widget. Cap height to the viewport and scroll only if
-     it still overflows. Above the alarm corner. */
-  min-width: 34rem;
+  /* Cap height to the viewport and scroll only if it still overflows; sits
+     above the bottom-right alarm corner. */
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 4rem);
   overflow-y: auto;
   z-index: 1000;
+}
+
+/* Only the fonts menu needs to be wide (its long list flows in 3 columns);
+   the Color/Monospace/Effects/Clock menus stay narrow. */
+.settings-panel__dropdown--fonts {
+  min-width: 34rem;
 }
 
 /* The long font list flows in three columns to stay wide and short. The
