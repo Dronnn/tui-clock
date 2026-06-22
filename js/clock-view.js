@@ -60,6 +60,7 @@
     weekdayInput: null,
     monthNumericInput: null,
     secondsInput: null,
+    splitInput: null,
     timezoneSelect: null,
     titleInput: null,
     subtitleInput: null,
@@ -70,6 +71,7 @@
     showWeekday: true,
     monthNumeric: false,
     showSeconds: true,
+    splitDateTime: false,
     timezone: LOCAL_ZONE,
     title: '',
     subtitle: ''
@@ -219,6 +221,11 @@
       return { str: timeStr, secondsRange: fieldRange };
     }
 
+    // A '\n' between date and time forces them onto separate rendered lines
+    // (the renderer treats it as a hard break); '  ' keeps them on one line and
+    // lets the size-fit wrap only when needed.
+    var dateTimeSep = state.splitDateTime ? '\n' : '  ';
+
     var dateParts = [];
     if (weekday) {
       dateParts.push((parts12.weekday || '').toUpperCase().slice(0, 3));
@@ -231,13 +238,13 @@
     var dateStr = dateParts.join(' ');
 
     if (state.datePosition === 'before') {
-      var offset = dateStr.length + 2;
+      var offset = dateStr.length + dateTimeSep.length;
       return {
-        str: dateStr + '  ' + timeStr,
+        str: dateStr + dateTimeSep + timeStr,
         secondsRange: [fieldRange[0] + offset, fieldRange[1] + offset]
       };
     }
-    return { str: timeStr + '  ' + dateStr, secondsRange: fieldRange };
+    return { str: timeStr + dateTimeSep + dateStr, secondsRange: fieldRange };
   }
 
   // ---------------------------------------------------------------------
@@ -366,6 +373,7 @@
     var weekdayInput = buildToggle('Weekday', 'clock-view__weekday-toggle');
     var secondsInput = buildToggle('Seconds', 'clock-view__seconds-toggle');
     var monthNumericInput = buildToggle('Month as number', 'clock-view__month-toggle');
+    var splitInput = buildToggle('Date & time on separate lines', 'clock-view__split-toggle');
 
     var timezoneLabel = document.createElement('label');
     timezoneLabel.className = 'clock-view__timezone-label';
@@ -407,6 +415,7 @@
     state.weekdayInput = weekdayInput;
     state.secondsInput = secondsInput;
     state.monthNumericInput = monthNumericInput;
+    state.splitInput = splitInput;
     state.timezoneSelect = timezoneSelect;
     state.titleInput = titleInput;
     state.subtitleInput = subtitleInput;
@@ -454,6 +463,15 @@
     state.monthNumeric = state.monthNumericInput.checked;
     savePrefs({ clockMonthNumeric: state.monthNumeric });
     renderNow();
+  }
+
+  function onSplitChange() {
+    state.splitDateTime = state.splitInput.checked;
+    savePrefs({ clockSplitDateTime: state.splitDateTime });
+    renderNow();
+    // Splitting changes the block height, so trigger app.js's re-fit (it
+    // listens for this event and re-runs the size fit).
+    document.dispatchEvent(new CustomEvent('tuiclock:style-changed'));
   }
 
   function onTitleInput() {
@@ -550,6 +568,7 @@
     state.showWeekday = typeof prefs.clockShowWeekday === 'boolean' ? prefs.clockShowWeekday : true;
     state.showSeconds = typeof prefs.clockShowSeconds === 'boolean' ? prefs.clockShowSeconds : true;
     state.monthNumeric = prefs.clockMonthNumeric === true;
+    state.splitDateTime = prefs.clockSplitDateTime === true;
     state.timezone = typeof prefs.timezone === 'string' ? prefs.timezone : LOCAL_ZONE;
     state.title = typeof prefs.clockTitle === 'string' ? prefs.clockTitle : '';
     state.subtitle = typeof prefs.clockSubtitle === 'string' ? prefs.clockSubtitle : '';
@@ -568,6 +587,8 @@
     state.secondsInput.addEventListener('change', onSecondsChange);
     state.monthNumericInput.checked = state.monthNumeric;
     state.monthNumericInput.addEventListener('change', onMonthNumericChange);
+    state.splitInput.checked = state.splitDateTime;
+    state.splitInput.addEventListener('change', onSplitChange);
 
     buildTimezoneOptions(state.timezoneSelect, state.timezone);
     state.timezoneSelect.addEventListener('change', onTimezoneChange);

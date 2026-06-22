@@ -51,11 +51,16 @@
       container.dataset.renderer = renderer;
     }
 
+    // Only the figlet renderer understands a '\n' hard break (date/time on
+    // separate lines); the bitmap/segment renderers render a single line, so
+    // flatten it to a space for them.
+    var flatStr = String(str).replace(/\n/g, ' ');
+
     if (renderer === 'block-stack') {
       if (!window.BlockStackFont || typeof window.BlockStackFont.renderBlockStackString !== 'function') {
         throw new Error('renderDigits: BlockStackFont renderer is not available');
       }
-      window.BlockStackFont.renderBlockStackString(container, str);
+      window.BlockStackFont.renderBlockStackString(container, flatStr);
       return;
     }
 
@@ -63,7 +68,7 @@
       if (!window.DashFont || typeof window.DashFont.renderDashString !== 'function') {
         throw new Error('renderDigits: DashFont renderer is not available');
       }
-      window.DashFont.renderDashString(container, str);
+      window.DashFont.renderDashString(container, flatStr);
       return;
     }
 
@@ -71,7 +76,7 @@
       if (!window.DotMatrixFont || typeof window.DotMatrixFont.renderDotMatrixString !== 'function') {
         throw new Error('renderDigits: DotMatrixFont renderer is not available');
       }
-      window.DotMatrixFont.renderDotMatrixString(container, str);
+      window.DotMatrixFont.renderDotMatrixString(container, flatStr);
       return;
     }
 
@@ -87,14 +92,14 @@
       if (!window.AsciiFont || typeof window.AsciiFont.render !== 'function') {
         throw new Error('renderDigits: AsciiFont renderer is not available');
       }
-      window.AsciiFont.render(container, str, fontKey);
+      window.AsciiFont.render(container, flatStr, fontKey);
       return;
     }
 
     if (typeof window.renderSegmentString !== 'function') {
       throw new Error('renderDigits: segment renderer is not available');
     }
-    window.renderSegmentString(container, str);
+    window.renderSegmentString(container, flatStr);
   }
 
   window.renderDigits = renderDigits;

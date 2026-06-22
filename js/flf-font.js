@@ -354,14 +354,39 @@
     return blocks.length === 1 ? blocks[0] : stackBlocks(blocks);
   }
 
-  function renderArt(fontName, str, opts) {
-    var wrapCols = wrapColsOf(opts);
+  // Renders one segment (no hard breaks) to a row array: word-wrapped to
+  // wrapCols when set, otherwise a single block.
+  function segmentRows(fontName, seg, wrapCols, secondsRange) {
     if (wrapCols > 0) {
       // When wrapping, the global seconds range no longer maps to the per-line
-      // segments, so the 'seconds' mode falls back to its last-digit-run rule.
-      return wrapRows(fontName, str, wrapCols).join('\n');
+      // pieces, so the 'seconds' mode falls back to its last-digit-run rule.
+      return wrapRows(fontName, seg, wrapCols);
     }
-    return blockRows(fontName, str, secondsRangeOf(opts)).join('\n');
+    return blockRows(fontName, seg, secondsRange);
+  }
+
+  function renderArt(fontName, str, opts) {
+    var wrapCols = wrapColsOf(opts);
+
+    // A '\n' is a hard break (e.g. the clock's "date and time on separate
+    // lines" option): render each segment independently and stack them, while
+    // each segment still wraps to wrapCols when the text is too wide.
+    if (str.indexOf('\n') !== -1) {
+      var segments = str.split('\n');
+      var blocks = [];
+      for (var i = 0; i < segments.length; i++) {
+        if (segments[i] === '') {
+          continue;
+        }
+        blocks.push(segmentRows(fontName, segments[i], wrapCols, null));
+      }
+      if (!blocks.length) {
+        return '';
+      }
+      return (blocks.length === 1 ? blocks[0] : stackBlocks(blocks)).join('\n');
+    }
+
+    return segmentRows(fontName, str, wrapCols, secondsRangeOf(opts)).join('\n');
   }
 
   function buildAll(container, str, key, fontName, opts) {
