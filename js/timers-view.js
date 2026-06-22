@@ -346,10 +346,17 @@
       renderList();
     });
 
-    section.appendChild(title);
-    section.appendChild(display);
-    section.appendChild(subtitleEl);
-    section.appendChild(labelEl);
+    // Title/digits/labels live in one group so the minor (small) widget can put
+    // them on a single row beside the controls instead of stacking the buttons
+    // underneath (where they overlapped the focused clock's frame corners).
+    var main = document.createElement('div');
+    main.className = 'timers-view__focused-main';
+    main.appendChild(title);
+    main.appendChild(display);
+    main.appendChild(subtitleEl);
+    main.appendChild(labelEl);
+
+    section.appendChild(main);
     section.appendChild(controls);
     container.appendChild(section);
 

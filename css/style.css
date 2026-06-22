@@ -598,6 +598,37 @@ main {
   gap: 0.5rem;
 }
 
+/* Title/digits/labels group: stacked in the focused (big) layout. */
+.timers-view__focused-main,
+.timer-stopwatch-view__focused-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* In the minor (small) widget, the timer and its controls sit on one row.
+   Left widget: timer then buttons; right widget: buttons then timer. This keeps
+   the buttons up in the top widget row instead of hanging down over the
+   focused clock's frame corners. */
+.pane--minor--left .timers-view__focused,
+.pane--minor--left .timer-stopwatch-view__focused,
+.pane--minor--right .timers-view__focused,
+.pane--minor--right .timer-stopwatch-view__focused {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pane--minor--right .timers-view__focused,
+.pane--minor--right .timer-stopwatch-view__focused {
+  flex-direction: row-reverse;
+}
+
+.pane--minor .timers-view__focused-controls,
+.pane--minor .timer-stopwatch-view__focused-controls {
+  margin: 0;
+}
+
 .timers-view__focused-title {
   color: var(--fg-muted);
   font-size: 0.85rem;
@@ -1607,8 +1638,10 @@ main {
   position: fixed;
   left: 2cm;
   right: 2cm;
-  top: calc(var(--app-header-height) + 3cm);
-  bottom: 2cm;
+  /* Horizontal insets stay at 2cm; vertical insets are roughly doubled so the
+     corner brackets sit further from the top widgets and the bottom edge. */
+  top: calc(var(--app-header-height) + 6cm);
+  bottom: 4cm;
   width: auto;
   max-width: none;
   display: flex;

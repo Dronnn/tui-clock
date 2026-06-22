@@ -242,10 +242,16 @@
       }
     });
 
-    section.appendChild(title);
-    section.appendChild(display);
-    section.appendChild(subtitleEl);
-    section.appendChild(labelEl);
+    // Grouped so the minor (small) widget can place the controls on the same
+    // row as the timer instead of stacking them underneath.
+    var main = document.createElement('div');
+    main.className = 'timer-stopwatch-view__focused-main';
+    main.appendChild(title);
+    main.appendChild(display);
+    main.appendChild(subtitleEl);
+    main.appendChild(labelEl);
+
+    section.appendChild(main);
     section.appendChild(controls);
     container.appendChild(section);
 
