@@ -67,7 +67,8 @@
   function figletRaw(fontName, s) {
     // A very large width disables figlet's word-wrapping. Without it, wide fonts
     // wrap (or fail to empty) on long space-less strings; the app does its own
-    // fit-to-viewport scaling instead.
+    // fit-to-viewport scaling instead. Wrapping (when the digits are zoomed past
+    // the frame) is handled at the source-string level in renderArt, not here.
     return window.figlet.textSync(s, {
       font: fontName,
       horizontalLayout: 'default',
@@ -174,25 +175,25 @@
   }
 
   // Trims leading/trailing blank rows and the shared left margin so the result
-  // hugs the ink. Used for the proportional ('off') mode.
-  function tightenBlock(rows) {
+  // hugs the ink. Used for the proportional ('off') mode. Returns a row array.
+  function tightenRows(rows) {
     var lines = dropBlankEdges(rows);
     var minLead = commonLeftMargin(lines);
     var out = [];
     for (var i = 0; i < lines.length; i++) {
       out.push(lines[i].slice(minLead).replace(/\s+$/, ''));
     }
-    return out.join('\n');
+    return out;
   }
 
   // Drops only blank top/bottom rows, keeping every column intact. Mono modes
-  // need this (not tightenBlock): each row is exactly the sum of the per-glyph
+  // need this (not tightenRows): each row is exactly the sum of the per-glyph
   // cell widths, so leaving the columns untouched keeps the block width
   // constant as digits tick — the centered block never shifts. Trimming the
-  // left margin / trailing space (as tightenBlock does) would reintroduce the
+  // left margin / trailing space (as tightenRows does) would reintroduce the
   // jitter by making the width depend on the edge glyphs' ink.
-  function trimVertical(rows) {
-    return dropBlankEdges(rows).join('\n');
+  function trimVerticalRows(rows) {
+    return dropBlankEdges(rows);
   }
 
   // True when index i falls inside the seconds range [start, end). When no
@@ -220,9 +221,9 @@
     return i >= start && i <= end;
   }
 
-  function composeMono(fontName, str, mode, secondsRange) {
+  function composeMonoRows(fontName, str, mode, secondsRange) {
     if (!str.length) {
-      return '';
+      return [];
     }
     var digitCell = maxDigitCell(fontName);
     var allCell = digitCell;
@@ -259,7 +260,7 @@
       }
       rows.push(s);
     }
-    return trimVertical(rows);
+    return trimVerticalRows(rows);
   }
 
   function secondsRangeOf(opts) {
@@ -271,12 +272,96 @@
     return r ? r[0] + ',' + r[1] : '';
   }
 
-  function renderArt(fontName, str, opts) {
+  function wrapColsOf(opts) {
+    return opts && opts.wrapCols ? opts.wrapCols : 0;
+  }
+
+  // Renders one source string (no wrapping) to a row array, in the active mode.
+  function blockRows(fontName, str, secondsRange) {
     var mode = monoMode();
     if (mode === 'off') {
-      return tightenBlock(figletRaw(fontName, str).split('\n'));
+      return tightenRows(figletRaw(fontName, str).split('\n'));
     }
-    return composeMono(fontName, str, mode, secondsRangeOf(opts));
+    return composeMonoRows(fontName, str, mode, secondsRange);
+  }
+
+  function maxRowLen(rows) {
+    var w = 0;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].length > w) {
+        w = rows[i].length;
+      }
+    }
+    return w;
+  }
+
+  // Stacks several rendered blocks vertically, centering each to the widest, so
+  // a wrapped clock reads as multiple centered lines. A blank gap row separates
+  // them.
+  function stackBlocks(blocks) {
+    var maxW = 0;
+    var i;
+    for (i = 0; i < blocks.length; i++) {
+      maxW = Math.max(maxW, maxRowLen(blocks[i]));
+    }
+    var out = [];
+    for (i = 0; i < blocks.length; i++) {
+      if (i > 0) {
+        out.push('');
+      }
+      var padded = padCenter(blocks[i], maxW);
+      for (var r = 0; r < padded.length; r++) {
+        out.push(padded[r]);
+      }
+    }
+    return out;
+  }
+
+  // Greedily wraps the source string's space-separated words so that each line's
+  // rendered block is no wider than wrapCols columns, then stacks the lines.
+  // wrapCols is in figlet columns and is independent of the cell pixel size, so
+  // the wrap is stable while the app scales --root-cell-size to fit.
+  function wrapRows(fontName, str, wrapCols) {
+    var words = str.split(' ');
+    var blocks = [];
+    var current = [];
+
+    function flush() {
+      if (current.length) {
+        blocks.push(blockRows(fontName, current.join(' '), null));
+        current = [];
+      }
+    }
+
+    for (var i = 0; i < words.length; i++) {
+      if (words[i] === '') {
+        continue;
+      }
+      var trial = current.concat([words[i]]);
+      var width = maxRowLen(blockRows(fontName, trial.join(' '), null));
+      if (width > wrapCols && current.length) {
+        flush();
+        current = [words[i]];
+      } else {
+        current.push(words[i]);
+      }
+    }
+    flush();
+
+    if (!blocks.length) {
+      return [];
+    }
+    return blocks.length === 1 ? blocks[0] : stackBlocks(blocks);
+  }
+
+  function renderArt(fontName, str, opts) {
+    var wrapCols = wrapColsOf(opts);
+    if (wrapCols > 0) {
+      // When wrapping, the global seconds range no longer maps to the per-line
+      // segments, so the 'seconds' mode falls back to its last-digit-run rule.
+      return wrapRows(fontName, str, wrapCols).join('\n');
+    }
+    return blockRows(fontName, str, secondsRangeOf(opts)).join('\n');
   }
 
   function buildAll(container, str, key, fontName, opts) {
@@ -292,7 +377,8 @@
     container.appendChild(row);
 
     container._flfState = {
-      str: str, key: key, mono: monoMode(), secKey: secondsKeyOf(opts), pre: pre
+      str: str, key: key, mono: monoMode(), secKey: secondsKeyOf(opts),
+      wrap: wrapColsOf(opts), pre: pre
     };
   }
 
@@ -308,17 +394,19 @@
     }
 
     var secKey = secondsKeyOf(opts);
+    var wrap = wrapColsOf(opts);
     var state = container._flfState;
     if (!state || state.key !== key || state.mono !== monoMode()) {
       buildAll(container, str, key, fontName, opts);
       return;
     }
-    if (state.str === str && state.secKey === secKey) {
+    if (state.str === str && state.secKey === secKey && state.wrap === wrap) {
       return;
     }
     state.pre.textContent = renderArt(fontName, str, opts);
     state.str = str;
     state.secKey = secKey;
+    state.wrap = wrap;
   }
 
   window.FlfFont = {

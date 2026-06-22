@@ -230,6 +230,17 @@
       availableHeight = window.innerHeight;
     }
 
+    // Clock + figlet: zooming past the frame wraps the string onto extra lines
+    // (rather than spilling past the corner brackets). Handled by a dedicated
+    // fit that grows the glyphs and picks a wrap column budget.
+    if (pane.id === 'view-clock' && canFigletWrap(display)) {
+      var wrapped = fitClockWrap(display, base, availableWidth, availableHeight);
+      if (wrapped) {
+        root.style.setProperty('--root-cell-size', wrapped.toFixed(2) + 'px');
+        return;
+      }
+    }
+
     var factor = Math.min(1, availableWidth / natural.width, availableHeight / natural.height);
     if (!isFinite(factor) || factor <= 0) {
       factor = 1;
@@ -237,9 +248,118 @@
     factor *= FIT_SAFETY;
 
     // userScale is the manual +/- zoom on top of the auto-fit (1 = fit to
-    // viewport; >1 enlarges past the fit, <1 shrinks).
-    var newSize = Math.max(MIN_FIT_CELL_SIZE, base * factor * userScale);
+    // viewport; >1 enlarges past the fit, <1 shrinks). Non-wrappable clock
+    // styles (segment/bitmap) can't reflow, so their zoom is capped at the fit
+    // to keep the digits inside the frame.
+    var effectiveScale = userScale;
+    if (pane.id === 'view-clock') {
+      effectiveScale = Math.min(userScale, 1);
+      display._fitWrapCols = 0;
+    }
+    var newSize = Math.max(MIN_FIT_CELL_SIZE, base * factor * effectiveScale);
     root.style.setProperty('--root-cell-size', newSize.toFixed(2) + 'px');
+  }
+
+  // True when the focused display is a real FIGlet font with a rendered string,
+  // i.e. one whose source string can be word-wrapped onto extra lines.
+  function canFigletWrap(display) {
+    var style = document.documentElement.dataset.style || '';
+    if (style.indexOf('afont-') !== 0) {
+      return false;
+    }
+    var key = style.slice('afont-'.length);
+    return !!(window.FlfFont && typeof window.FlfFont.has === 'function' &&
+      window.FlfFont.has(key) && display._flfState && display._flfState.str);
+  }
+
+  // Reads the column width of the currently-rendered figlet block.
+  function renderedColumns(display) {
+    var pre = display.querySelector('pre');
+    if (!pre) {
+      return 0;
+    }
+    var lines = pre.textContent.split('\n');
+    var cols = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].length > cols) {
+        cols = lines[i].length;
+      }
+    }
+    return cols;
+  }
+
+  // Fits the clock's figlet digits inside the frame, growing them with userScale
+  // and wrapping the string onto extra lines when they would otherwise exceed
+  // the frame width. Re-renders the display while probing (cheap: a few figlet
+  // passes), leaves it at the chosen wrap, records display._fitWrapCols so the
+  // per-second tick keeps the same wrap, and returns the --root-cell-size to use.
+  function fitClockWrap(display, base, availW, availH) {
+    var str = display._flfState.str;
+    if (!str) {
+      return null;
+    }
+    availW *= FIT_SAFETY;
+    availH *= FIT_SAFETY;
+
+    function measure(wrapCols) {
+      window.renderDigits(display, str, { wrapCols: wrapCols });
+      return measureContent(display);
+    }
+
+    var u = measure(0); // unwrapped baseline, at `base` cell size
+    var uCols = renderedColumns(display);
+    if (!u.width || !u.height || !uCols) {
+      display._fitWrapCols = 0;
+      return null;
+    }
+    var colPxBase = u.width / uCols; // px per figlet column at the base size
+
+    var fitFactor = Math.min(1, availW / u.width, availH / u.height);
+    var fitSize = base * fitFactor;   // largest single-line size that fits
+    var target = fitSize * userScale; // what the user's zoom asks for
+
+    // No zoom past the single-line fit: render unwrapped at the requested size.
+    if (target <= fitSize + 0.001) {
+      measure(0);
+      display._fitWrapCols = 0;
+      return Math.max(MIN_FIT_CELL_SIZE, target);
+    }
+
+    // For a candidate cell size, wrap to the columns that fill the width at that
+    // size, and report whether the wrapped block still fits the frame height.
+    function tryAt(size) {
+      var colPxSize = colPxBase * (size / base);
+      var cols = Math.max(6, Math.floor(availW / colPxSize));
+      var m = measure(cols);
+      var scale = size / base;
+      return {
+        cols: cols,
+        fits: m.height * scale <= availH && m.width * scale <= availW
+      };
+    }
+
+    // Binary-search the largest size in [fitSize, target] whose wrapped layout
+    // still fits the frame — so zooming in grows the glyphs and reflows them
+    // onto extra lines, using the frame's vertical space instead of overflowing.
+    var lo = fitSize;
+    var hi = target;
+    var best = fitSize;
+    var bestWrap = 0;
+    for (var iter = 0; iter < 16; iter++) {
+      var mid = (lo + hi) / 2;
+      var r = tryAt(mid);
+      if (r.fits) {
+        best = mid;
+        bestWrap = r.cols;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+
+    measure(bestWrap); // leave the display rendered at the chosen wrap
+    display._fitWrapCols = bestWrap;
+    return Math.max(MIN_FIT_CELL_SIZE, best);
   }
 
   function setUserScale(scale) {

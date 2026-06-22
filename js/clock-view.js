@@ -521,7 +521,13 @@
       return;
     }
     var formatted = formatNow();
-    window.renderDigits(state.displayMount, formatted.str, { secondsRange: formatted.secondsRange });
+    // _fitWrapCols is set by app.js's fit pass: when the digits are zoomed past
+    // the frame it holds the column budget at which the string wraps onto new
+    // lines; 0/undefined means render on a single line.
+    window.renderDigits(state.displayMount, formatted.str, {
+      secondsRange: formatted.secondsRange,
+      wrapCols: state.displayMount._fitWrapCols || 0
+    });
   }
 
   // ---------------------------------------------------------------------
