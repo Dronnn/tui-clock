@@ -37,7 +37,10 @@
     container._afState = null;
   }
 
-  function renderDigits(container, str) {
+  // opts (optional): { secondsRange: [start, end) } — character range of the
+  // seconds digits, used only by the figlet renderer's 'seconds' monospace
+  // mode. Ignored by the bitmap/segment renderers.
+  function renderDigits(container, str, opts) {
     if (!container) {
       throw new Error('renderDigits: container element is required');
     }
@@ -78,7 +81,7 @@
       // output); fall back to the legacy hand-made glyphs only if FlfFont
       // doesn't know this font.
       if (window.FlfFont && typeof window.FlfFont.has === 'function' && window.FlfFont.has(fontKey)) {
-        window.FlfFont.render(container, str, fontKey);
+        window.FlfFont.render(container, str, fontKey, opts);
         return;
       }
       if (!window.AsciiFont || typeof window.AsciiFont.render !== 'function') {

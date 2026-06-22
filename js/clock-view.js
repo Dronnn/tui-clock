@@ -180,7 +180,10 @@
 
   // Composes the display string from the current format pieces, adapted to the
   // active font: a font without letters shows an all-numeric 24h date+time, and
-  // a font without ':' uses '.' (or a space) to separate the time.
+  // a font without ':' uses '.' (or a space) to separate the time. Returns
+  // { str, secondsRange } where secondsRange is the [start, end) character span
+  // of the fastest-changing time field (seconds if shown, else minutes) inside
+  // str — used by the figlet 'seconds' monospace mode to stabilize that field.
   function formatNow() {
     var parts12 = getParts(state.timezone);
     var parts24 = get24Parts(state.timezone);
@@ -208,8 +211,12 @@
       }
     }
 
+    // Fastest field within timeStr: HH(2)+sep(1)+MM(2) [+sep(1)] -> SS or MM.
+    var fieldStart = state.showSeconds ? 6 : 3;
+    var fieldRange = [fieldStart, fieldStart + 2];
+
     if (state.datePosition === 'off') {
-      return timeStr;
+      return { str: timeStr, secondsRange: fieldRange };
     }
 
     var dateParts = [];
@@ -223,9 +230,14 @@
     dateParts.push(parts12.year);
     var dateStr = dateParts.join(' ');
 
-    return state.datePosition === 'before'
-      ? dateStr + '  ' + timeStr
-      : timeStr + '  ' + dateStr;
+    if (state.datePosition === 'before') {
+      var offset = dateStr.length + 2;
+      return {
+        str: dateStr + '  ' + timeStr,
+        secondsRange: [fieldRange[0] + offset, fieldRange[1] + offset]
+      };
+    }
+    return { str: timeStr + '  ' + dateStr, secondsRange: fieldRange };
   }
 
   // ---------------------------------------------------------------------
@@ -295,21 +307,25 @@
   function buildDom(container) {
     container.innerHTML = '';
 
+    // The frame encloses the title, the digits, and the subtitle as one fixed
+    // box (sized in CSS, independent of the digits), so it never shifts as the
+    // numbers tick.
+    var frame = buildViewfinderFrame();
+
     var titleEl = document.createElement('div');
     titleEl.className = 'clock-view__title';
 
-    var frame = buildViewfinderFrame();
-
     var displayMount = document.createElement('div');
     displayMount.className = 'segment-display clock-view__display';
-    frame.appendChild(displayMount);
 
     var subtitleEl = document.createElement('div');
     subtitleEl.className = 'clock-view__subtitle';
 
-    container.appendChild(titleEl);
+    frame.appendChild(titleEl);
+    frame.appendChild(displayMount);
+    frame.appendChild(subtitleEl);
+
     container.appendChild(frame);
-    container.appendChild(subtitleEl);
 
     var controls = document.createElement('div');
     controls.className = 'clock-view__controls';
@@ -504,8 +520,8 @@
     if (!state.initialized) {
       return;
     }
-    var str = formatNow();
-    window.renderDigits(state.displayMount, str);
+    var formatted = formatNow();
+    window.renderDigits(state.displayMount, formatted.str, { secondsRange: formatted.secondsRange });
   }
 
   // ---------------------------------------------------------------------

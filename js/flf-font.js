@@ -64,11 +64,6 @@
     return entry.name;
   }
 
-  // Per-font caches: the widest digit glyph, and the stable "box" (left margin +
-  // width in columns) of a given digit-normalized shape.
-  var widestDigitCache = {};
-  var shapeBoxCache = {};
-
   function figletRaw(fontName, s) {
     // A very large width disables figlet's word-wrapping. Without it, wide fonts
     // wrap (or fail to empty) on long space-less strings; the app does its own
@@ -113,88 +108,195 @@
     return isFinite(min) ? min : 0;
   }
 
-  function widestDigit(fontName) {
-    if (widestDigitCache[fontName]) {
-      return widestDigitCache[fontName];
+  // Monospace mode, read globally from <html data-mono>: 'off' keeps the nice
+  // kerned look (but proportional digits shift the centered block as they
+  // tick); 'seconds' gives only the seconds digits a uniform cell (the rest
+  // stay proportional); 'digits' gives every digit a uniform cell (weekday/
+  // month stay normal width); 'all' gives every glyph a uniform cell.
+  function monoMode() {
+    var m = document.documentElement.getAttribute('data-mono');
+    return (m === 'all' || m === 'digits' || m === 'seconds') ? m : 'off';
+  }
+
+  // Per-(font,char) glyph rectangle at the font's full height, keeping figlet's
+  // natural horizontal spacing so monospaced output isn't cramped.
+  var glyphCache = {};
+  function glyphRect(fontName, ch) {
+    var ck = fontName + '|' + ch;
+    if (glyphCache[ck]) {
+      return glyphCache[ck];
     }
-    var best = '0';
-    var bestWidth = -1;
+    var lines = figletRaw(fontName, ch).split('\n');
+    var w = 0;
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      if (lines[i].length > w) {
+        w = lines[i].length;
+      }
+    }
+    var rect = [];
+    for (i = 0; i < lines.length; i++) {
+      rect.push(lines[i] + spaces(w - lines[i].length));
+    }
+    var g = { lines: rect, width: w, height: lines.length };
+    glyphCache[ck] = g;
+    return g;
+  }
+
+  function maxDigitCell(fontName) {
+    var m = 0;
     for (var d = 0; d < 10; d++) {
-      var lines = dropBlankEdges(figletRaw(fontName, String(d)).split('\n'));
-      var ml = commonLeftMargin(lines);
-      var w = 0;
-      for (var i = 0; i < lines.length; i++) {
-        var t = lines[i].slice(ml).replace(/\s+$/, '');
-        if (t.length > w) {
-          w = t.length;
-        }
-      }
-      if (w > bestWidth) {
-        bestWidth = w;
-        best = String(d);
+      var w = glyphRect(fontName, String(d)).width;
+      if (w > m) {
+        m = w;
       }
     }
-    widestDigitCache[fontName] = best;
-    return best;
+    return m;
   }
 
-  // The stable box for a shape (the string with every digit replaced by the
-  // font's widest digit): its left margin and column width. Because the widest
-  // digit is used, the real string never exceeds this width, so the rendered
-  // block keeps a constant size as digits tick — the left edge stays put and
-  // only trailing space on the right changes. This kills the horizontal jitter
-  // without forcing ugly monospaced digits.
-  function shapeBox(fontName, shape) {
-    var cacheKey = fontName + '|' + shape;
-    if (shapeBoxCache[cacheKey]) {
-      return shapeBoxCache[cacheKey];
+  function padCenter(lines, target) {
+    var w = 0;
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      if (lines[i].length > w) {
+        w = lines[i].length;
+      }
     }
-    var lines = dropBlankEdges(figletRaw(fontName, shape).split('\n'));
+    if (target <= w) {
+      return lines;
+    }
+    var left = Math.floor((target - w) / 2);
+    var out = [];
+    for (i = 0; i < lines.length; i++) {
+      out.push(spaces(left) + lines[i] + spaces(target - left - lines[i].length));
+    }
+    return out;
+  }
+
+  // Trims leading/trailing blank rows and the shared left margin so the result
+  // hugs the ink. Used for the proportional ('off') mode.
+  function tightenBlock(rows) {
+    var lines = dropBlankEdges(rows);
     var minLead = commonLeftMargin(lines);
-    var width = 0;
-    for (var i = 0; i < lines.length; i++) {
-      var t = lines[i].slice(minLead).replace(/\s+$/, '');
-      if (t.length > width) {
-        width = t.length;
-      }
-    }
-    var box = { minLead: minLead, width: width };
-    shapeBoxCache[cacheKey] = box;
-    return box;
-  }
-
-  function renderArt(fontName, str) {
-    var shape = str.replace(/[0-9]/g, widestDigit(fontName));
-    var box = shapeBox(fontName, shape);
-    var lines = dropBlankEdges(figletRaw(fontName, str).split('\n'));
     var out = [];
     for (var i = 0; i < lines.length; i++) {
-      var line = lines[i].slice(box.minLead).replace(/\s+$/, '');
-      if (line.length > box.width) {
-        line = line.slice(0, box.width);
-      }
-      // Right-pad to the stable box width so the <pre> never reflows.
-      out.push(line + spaces(box.width - line.length));
+      out.push(lines[i].slice(minLead).replace(/\s+$/, ''));
     }
     return out.join('\n');
   }
 
-  function buildAll(container, str, key, fontName) {
+  // Drops only blank top/bottom rows, keeping every column intact. Mono modes
+  // need this (not tightenBlock): each row is exactly the sum of the per-glyph
+  // cell widths, so leaving the columns untouched keeps the block width
+  // constant as digits tick — the centered block never shifts. Trimming the
+  // left margin / trailing space (as tightenBlock does) would reintroduce the
+  // jitter by making the width depend on the edge glyphs' ink.
+  function trimVertical(rows) {
+    return dropBlankEdges(rows).join('\n');
+  }
+
+  // True when index i falls inside the seconds range [start, end). When no
+  // range is supplied (e.g. countdown/stopwatch don't pass one), 'seconds' mode
+  // falls back to the last maximal run of digits in the string.
+  function inSeconds(str, i, range) {
+    if (range) {
+      return i >= range[0] && i < range[1];
+    }
+    var end = -1;
+    var k;
+    for (k = str.length - 1; k >= 0; k--) {
+      if (str.charAt(k) >= '0' && str.charAt(k) <= '9') {
+        end = k;
+        break;
+      }
+    }
+    if (end < 0) {
+      return false;
+    }
+    var start = end;
+    while (start - 1 >= 0 && str.charAt(start - 1) >= '0' && str.charAt(start - 1) <= '9') {
+      start--;
+    }
+    return i >= start && i <= end;
+  }
+
+  function composeMono(fontName, str, mode, secondsRange) {
+    if (!str.length) {
+      return '';
+    }
+    var digitCell = maxDigitCell(fontName);
+    var allCell = digitCell;
+    var i;
+    if (mode === 'all') {
+      for (i = 0; i < str.length; i++) {
+        var gw = glyphRect(fontName, str.charAt(i)).width;
+        if (gw > allCell) {
+          allCell = gw;
+        }
+      }
+    }
+    var height = glyphRect(fontName, str.charAt(0)).height;
+    var cols = [];
+    for (i = 0; i < str.length; i++) {
+      var ch = str.charAt(i);
+      var g = glyphRect(fontName, ch);
+      var target = g.width;
+      var isDigit = ch >= '0' && ch <= '9';
+      if (mode === 'all') {
+        target = allCell;
+      } else if (mode === 'digits' && isDigit) {
+        target = digitCell;
+      } else if (mode === 'seconds' && isDigit && inSeconds(str, i, secondsRange)) {
+        target = digitCell;
+      }
+      cols.push(padCenter(g.lines, target));
+    }
+    var rows = [];
+    for (var r = 0; r < height; r++) {
+      var s = '';
+      for (var c = 0; c < cols.length; c++) {
+        s += cols[c][r] || '';
+      }
+      rows.push(s);
+    }
+    return trimVertical(rows);
+  }
+
+  function secondsRangeOf(opts) {
+    return opts && opts.secondsRange ? opts.secondsRange : null;
+  }
+
+  function secondsKeyOf(opts) {
+    var r = secondsRangeOf(opts);
+    return r ? r[0] + ',' + r[1] : '';
+  }
+
+  function renderArt(fontName, str, opts) {
+    var mode = monoMode();
+    if (mode === 'off') {
+      return tightenBlock(figletRaw(fontName, str).split('\n'));
+    }
+    return composeMono(fontName, str, mode, secondsRangeOf(opts));
+  }
+
+  function buildAll(container, str, key, fontName, opts) {
     var row = document.createElement('div');
     row.className = 'af-row';
 
     var pre = document.createElement('pre');
     pre.className = 'af-glyph af-block';
-    pre.textContent = renderArt(fontName, str);
+    pre.textContent = renderArt(fontName, str, opts);
 
     row.appendChild(pre);
     container.innerHTML = '';
     container.appendChild(row);
 
-    container._flfState = { str: str, key: key, pre: pre };
+    container._flfState = {
+      str: str, key: key, mono: monoMode(), secKey: secondsKeyOf(opts), pre: pre
+    };
   }
 
-  function render(container, str, key) {
+  function render(container, str, key, opts) {
     if (!container) {
       throw new Error('FlfFont.render: container element is required');
     }
@@ -205,16 +307,18 @@
       throw new Error('FlfFont.render: unknown font "' + key + '"');
     }
 
+    var secKey = secondsKeyOf(opts);
     var state = container._flfState;
-    if (!state || state.key !== key) {
-      buildAll(container, str, key, fontName);
+    if (!state || state.key !== key || state.mono !== monoMode()) {
+      buildAll(container, str, key, fontName, opts);
       return;
     }
-    if (state.str === str) {
+    if (state.str === str && state.secKey === secKey) {
       return;
     }
-    state.pre.textContent = renderArt(fontName, str);
+    state.pre.textContent = renderArt(fontName, str, opts);
     state.str = str;
+    state.secKey = secKey;
   }
 
   window.FlfFont = {

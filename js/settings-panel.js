@@ -65,13 +65,33 @@
     container: null,
     toggleButton: null,
     dropdown: null,
+    fontsButton: null,
+    fontsDropdown: null,
     matrixInput: null,
     shuffleInput: null,
+    keepAwakeInput: null,
     visualStyle: DEFAULT_STYLE,
     colorScheme: DEFAULT_COLOR,
     matrixBg: false,
-    fontShuffle: false
+    fontShuffle: false,
+    keepAwake: false,
+    monoMode: 'off'
   };
+
+  // Monospace modes for the figlet fonts (so ticking digits don't shift the
+  // centered block). 'seconds' only fixes the seconds; 'digits' fixes every
+  // number; 'all' fixes every glyph.
+  var MONO_OPTIONS = [
+    { value: 'off', label: 'Off' },
+    { value: 'seconds', label: 'Seconds only' },
+    { value: 'digits', label: 'All digits' },
+    { value: 'all', label: 'Everything' }
+  ];
+
+  // Applies the monospace mode to <html data-mono> (read by FlfFont).
+  function applyMono(value) {
+    document.documentElement.setAttribute('data-mono', value);
+  }
 
   // Auto-shuffle timer handle (setTimeout id) and its bounds. When shuffle is
   // on, the style jumps to a random figlet font every SHUFFLE_MIN..MAX ms.
@@ -165,10 +185,40 @@
     return { label: label, input: input };
   }
 
+  function buildGroupLabel(text) {
+    var el = document.createElement('div');
+    el.className = 'settings-panel__group-label';
+    el.textContent = text;
+    return el;
+  }
+
   function buildDom(container) {
     container.innerHTML = '';
     container.className = 'settings-panel';
 
+    // ---- Fonts menu (its own button, left of the gear) -----------------
+    var fontsButton = document.createElement('button');
+    fontsButton.type = 'button';
+    fontsButton.className = 'settings-panel__toggle settings-panel__toggle--fonts';
+    fontsButton.setAttribute('aria-label', 'Fonts');
+    fontsButton.textContent = 'Aa';
+    container.appendChild(fontsButton);
+
+    var fontsDropdown = document.createElement('div');
+    fontsDropdown.className = 'settings-panel__dropdown settings-panel__dropdown--fonts';
+
+    fontsDropdown.appendChild(buildGroupLabel('Font'));
+    var styleGroup = buildRadioGroup('settings-panel-style', STYLE_OPTIONS, state.visualStyle, onStyleChange);
+    styleGroup.classList.add('settings-panel__group--columns');
+    fontsDropdown.appendChild(styleGroup);
+
+    fontsDropdown.appendChild(buildGroupLabel('Monospace'));
+    var monoGroup = buildRadioGroup('settings-panel-mono', MONO_OPTIONS, state.monoMode, onMonoChange);
+    fontsDropdown.appendChild(monoGroup);
+
+    container.appendChild(fontsDropdown);
+
+    // ---- Settings menu (the gear) --------------------------------------
     var toggleButton = document.createElement('button');
     toggleButton.type = 'button';
     toggleButton.className = 'settings-panel__toggle';
@@ -179,28 +229,11 @@
     var dropdown = document.createElement('div');
     dropdown.className = 'settings-panel__dropdown';
 
-    var styleLabel = document.createElement('div');
-    styleLabel.className = 'settings-panel__group-label';
-    styleLabel.textContent = 'Style';
-    dropdown.appendChild(styleLabel);
-
-    var styleGroup = buildRadioGroup('settings-panel-style', STYLE_OPTIONS, state.visualStyle, onStyleChange);
-    styleGroup.classList.add('settings-panel__group--columns');
-    dropdown.appendChild(styleGroup);
-
-    var colorLabel = document.createElement('div');
-    colorLabel.className = 'settings-panel__group-label';
-    colorLabel.textContent = 'Color';
-    dropdown.appendChild(colorLabel);
-
+    dropdown.appendChild(buildGroupLabel('Color'));
     var colorGroup = buildRadioGroup('settings-panel-color', COLOR_OPTIONS, state.colorScheme, onColorChange);
     dropdown.appendChild(colorGroup);
 
-    var effectsLabel = document.createElement('div');
-    effectsLabel.className = 'settings-panel__group-label';
-    effectsLabel.textContent = 'Effects';
-    dropdown.appendChild(effectsLabel);
-
+    dropdown.appendChild(buildGroupLabel('Effects'));
     var effectsGroup = document.createElement('div');
     effectsGroup.className = 'settings-panel__group';
 
@@ -212,6 +245,10 @@
     state.shuffleInput = shuffleRow.input;
     effectsGroup.appendChild(shuffleRow.label);
 
+    var keepAwakeRow = buildCheckboxRow('Keep screen awake', state.keepAwake, onKeepAwakeChange);
+    state.keepAwakeInput = keepAwakeRow.input;
+    effectsGroup.appendChild(keepAwakeRow.label);
+
     dropdown.appendChild(effectsGroup);
 
     // Mount the clock's format controls here (they are built by ClockView but
@@ -220,10 +257,7 @@
     if (window.ClockView && typeof window.ClockView.getControls === 'function') {
       var clockControls = window.ClockView.getControls();
       if (clockControls) {
-        var clockLabel = document.createElement('div');
-        clockLabel.className = 'settings-panel__group-label';
-        clockLabel.textContent = 'Clock';
-        dropdown.appendChild(clockLabel);
+        dropdown.appendChild(buildGroupLabel('Clock'));
         clockControls.classList.add('settings-panel__clock-controls');
         dropdown.appendChild(clockControls);
       }
@@ -231,6 +265,8 @@
 
     container.appendChild(dropdown);
 
+    state.fontsButton = fontsButton;
+    state.fontsDropdown = fontsDropdown;
     state.toggleButton = toggleButton;
     state.dropdown = dropdown;
   }
@@ -239,31 +275,35 @@
   // Event handling
   // ---------------------------------------------------------------------
 
-  function openDropdown() {
-    state.dropdown.classList.add('is-open');
-    state.toggleButton.classList.add('is-active');
-  }
-
-  function closeDropdown() {
+  // Both menus share one open-at-a-time model: opening one closes the other.
+  function closeMenus() {
     state.dropdown.classList.remove('is-open');
     state.toggleButton.classList.remove('is-active');
+    state.fontsDropdown.classList.remove('is-open');
+    state.fontsButton.classList.remove('is-active');
   }
 
-  function isDropdownOpen() {
-    return state.dropdown.classList.contains('is-open');
+  function toggleSettings() {
+    var open = state.dropdown.classList.contains('is-open');
+    closeMenus();
+    if (!open) {
+      state.dropdown.classList.add('is-open');
+      state.toggleButton.classList.add('is-active');
+    }
   }
 
-  function toggleDropdown() {
-    if (isDropdownOpen()) {
-      closeDropdown();
-    } else {
-      openDropdown();
+  function toggleFonts() {
+    var open = state.fontsDropdown.classList.contains('is-open');
+    closeMenus();
+    if (!open) {
+      state.fontsDropdown.classList.add('is-open');
+      state.fontsButton.classList.add('is-active');
     }
   }
 
   function onDocumentClick(event) {
     if (!state.container.contains(event.target)) {
-      closeDropdown();
+      closeMenus();
     }
   }
 
@@ -432,6 +472,91 @@
   }
 
   // ---------------------------------------------------------------------
+  // Monospace mode for the figlet fonts
+  // ---------------------------------------------------------------------
+
+  function setMono(value) {
+    if (!isValidOption(MONO_OPTIONS, value)) {
+      value = 'off';
+    }
+    state.monoMode = value;
+    applyMono(value);
+    savePrefs({ monoMode: value });
+    if (state.fontsDropdown) {
+      var radios = state.fontsDropdown.querySelectorAll('input[name="settings-panel-mono"]');
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].checked = radios[i].value === value;
+      }
+    }
+    // The renderers read data-mono lazily; nudge a redraw so the change shows
+    // immediately instead of only on the next tick.
+    document.dispatchEvent(new CustomEvent('tuiclock:style-changed'));
+  }
+
+  function onMonoChange(value) {
+    setMono(value);
+  }
+
+  // ---------------------------------------------------------------------
+  // Keep-awake (Screen Wake Lock API). Prevents the display from sleeping
+  // while the checkbox is on; re-acquires the lock when the tab becomes
+  // visible again (the browser releases it on tab switch). Silently degrades
+  // where the API is unavailable.
+  // ---------------------------------------------------------------------
+
+  var wakeLock = null;
+
+  function wakeLockSupported() {
+    return typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+  }
+
+  function requestWakeLock() {
+    if (!wakeLockSupported()) {
+      return;
+    }
+    navigator.wakeLock.request('screen').then(function (lock) {
+      wakeLock = lock;
+      lock.addEventListener('release', function () {
+        wakeLock = null;
+      });
+    }).catch(function () {
+      // Rejected (e.g. not visible, or blocked) — leave it; visibilitychange
+      // will retry while the toggle is on.
+    });
+  }
+
+  function releaseWakeLock() {
+    if (wakeLock) {
+      wakeLock.release().catch(function () {});
+      wakeLock = null;
+    }
+  }
+
+  function onVisibilityChange() {
+    if (state.keepAwake && document.visibilityState === 'visible' && !wakeLock) {
+      requestWakeLock();
+    }
+  }
+
+  function setKeepAwake(on) {
+    on = !!on;
+    state.keepAwake = on;
+    if (on) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+    if (state.keepAwakeInput) {
+      state.keepAwakeInput.checked = on;
+    }
+    savePrefs({ keepAwake: on });
+  }
+
+  function onKeepAwakeChange(value) {
+    setKeepAwake(value);
+  }
+
+  // ---------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------
 
@@ -447,6 +572,8 @@
     state.colorScheme = isValidOption(COLOR_OPTIONS, prefs.colorScheme) ? prefs.colorScheme : DEFAULT_COLOR;
     state.matrixBg = prefs.matrixBg === true;
     state.fontShuffle = prefs.fontShuffle === true;
+    state.keepAwake = prefs.keepAwake === true;
+    state.monoMode = isValidOption(MONO_OPTIONS, prefs.monoMode) ? prefs.monoMode : 'off';
 
     state.container = container;
     buildDom(container);
@@ -454,16 +581,25 @@
     if (state.fontShuffle) {
       setShuffle(true);
     }
+    if (state.keepAwake) {
+      requestWakeLock();
+    }
 
     applyStyle(state.visualStyle);
     applyColor(state.colorScheme);
+    applyMono(state.monoMode);
 
     state.toggleButton.addEventListener('click', function (event) {
       event.stopPropagation();
-      toggleDropdown();
+      toggleSettings();
+    });
+    state.fontsButton.addEventListener('click', function (event) {
+      event.stopPropagation();
+      toggleFonts();
     });
 
     document.addEventListener('click', onDocumentClick);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     state.initialized = true;
   }
@@ -483,6 +619,8 @@
     cycleColor: cycleColor,
     setShuffle: setShuffle,
     toggleShuffle: toggleShuffle,
-    isShuffling: isShuffling
+    isShuffling: isShuffling,
+    toggleSettings: toggleSettings,
+    toggleFonts: toggleFonts
   };
 })();

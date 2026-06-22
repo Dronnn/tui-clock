@@ -22,6 +22,7 @@
     ['P', 'Previous font'],
     ['R', 'Shuffle fonts on/off'],
     ['X', 'Cycle color'],
+    ['S', 'Settings'],
     ['+/-', 'Size'],
     ['?', 'This help']
   ];

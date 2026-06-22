@@ -1578,6 +1578,7 @@ main {
 .viewfinder-frame {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
@@ -1586,6 +1587,36 @@ main {
   /* Uniform gap between the (ink-trimmed) text and the corner marks, the same
      for every font. */
   padding: 0.7rem;
+}
+
+/* Focused (big) clock frame: a fixed-size rectangle drawn with a thick double
+   line that encloses the title, the digits and the subtitle as one unit. It is
+   sized from the viewport — not from the digits — so it never shifts as the
+   numbers tick. ~2cm in from the left/right screen edges, ~3cm below the top
+   widget row, ~2cm up from the bottom. */
+.pane--focused .viewfinder-frame {
+  position: fixed;
+  left: 2cm;
+  right: 2cm;
+  top: calc(var(--app-header-height) + 3cm);
+  bottom: 2cm;
+  width: auto;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  border: 9px double var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* The corner brackets are only for the small (minor) clock widget; the big
+   focused frame uses a continuous double border instead. */
+.pane--focused .viewfinder-frame__corner {
+  display: none;
 }
 
 .viewfinder-frame__corner {

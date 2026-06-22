@@ -43,7 +43,9 @@
   var MAX_CELL_SIZE = 16;
 
   var FOCUSED_DISPLAY_SELECTOR = '.clock-view__display, .timers-view__focused-display, .timer-stopwatch-view__focused-display';
-  var CLOCK_FIT_TARGET_SELECTOR = '.viewfinder-frame';
+  // The clock fits its digits (not the whole frame): the frame is a fixed-size
+  // box now, so the digits are scaled to fit inside it (see fitBounds).
+  var CLOCK_FIT_TARGET_SELECTOR = '.clock-view__display';
   var FIT_TARGET_SELECTOR = CLOCK_FIT_TARGET_SELECTOR + ', ' + FOCUSED_DISPLAY_SELECTOR;
   var VIEWPORT_FIT_MARGIN_PX = 24;
   // Shrink a touch more than the measured fit: monospace/figlet glyph ink
@@ -106,6 +108,45 @@
         clearDisplayFit(displays[i]);
       }
     }
+  }
+
+  // The area the focused display must fit within. For the Clock pane the digits
+  // live inside the fixed double frame, so they fit the frame's inner box (minus
+  // the title/subtitle that share it) rather than the whole viewport — keeping
+  // the digits within the frame at any zoom. Other panes fit the viewport.
+  function fitBounds(pane, display) {
+    var frame = pane.id === 'view-clock' && display.parentElement &&
+      display.parentElement.classList.contains('viewfinder-frame')
+      ? display.parentElement : null;
+
+    if (!frame) {
+      return {
+        width: window.innerWidth - VIEWPORT_FIT_MARGIN_PX,
+        height: pane.getBoundingClientRect().height - verticalPadding(pane)
+      };
+    }
+
+    var fs = window.getComputedStyle(frame);
+    var padX = readPixelValue(fs.paddingLeft) + readPixelValue(fs.paddingRight);
+    var padY = readPixelValue(fs.paddingTop) + readPixelValue(fs.paddingBottom);
+    var gap = readPixelValue(fs.rowGap) || readPixelValue(fs.gap) || 0;
+
+    var others = 0;
+    for (var i = 0; i < frame.children.length; i++) {
+      var child = frame.children[i];
+      if (child === display) {
+        continue;
+      }
+      var h = child.getBoundingClientRect().height;
+      if (h > 0) {
+        others += h + gap; // one gap per sibling (conservative)
+      }
+    }
+
+    return {
+      width: frame.clientWidth - padX,
+      height: frame.clientHeight - padY - others
+    };
   }
 
   function fitTargetForPane(pane) {
@@ -179,9 +220,9 @@
       return;
     }
 
-    var paneRect = pane.getBoundingClientRect();
-    var availableWidth = window.innerWidth - VIEWPORT_FIT_MARGIN_PX;
-    var availableHeight = paneRect.height - verticalPadding(pane);
+    var bounds = fitBounds(pane, display);
+    var availableWidth = bounds.width;
+    var availableHeight = bounds.height;
     if (!availableWidth || availableWidth < 1) {
       availableWidth = window.innerWidth;
     }
@@ -391,6 +432,13 @@
       if (window.SettingsPanel && typeof window.SettingsPanel.toggleShuffle === 'function') {
         window.SettingsPanel.toggleShuffle();
         tickAll();
+      }
+      return;
+    }
+    // 'S' opens/closes the settings menu.
+    if (keyName === 's' || event.code === 'KeyS') {
+      if (window.SettingsPanel && typeof window.SettingsPanel.toggleSettings === 'function') {
+        window.SettingsPanel.toggleSettings();
       }
       return;
     }
