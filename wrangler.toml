@@ -1,0 +1,12 @@
+# Cloudflare configuration for deploying this static site as a Pages project.
+#
+# This is a plain static site (HTML/CSS/JS, no build step), so the whole repo
+# root is the output directory.
+#
+# Deploy from the CLI:    npx wrangler pages deploy .
+# Or connect the GitHub repo in the Cloudflare Pages dashboard with an empty
+# build command and "/" as the output directory.
+
+name = "timer"
+pages_build_output_dir = "."
+compatibility_date = "2025-11-01"
