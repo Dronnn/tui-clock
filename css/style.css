@@ -1589,11 +1589,11 @@ main {
   padding: 0.7rem;
 }
 
-/* Focused (big) clock frame: a fixed-size rectangle drawn with a thick double
-   line that encloses the title, the digits and the subtitle as one unit. It is
-   sized from the viewport — not from the digits — so it never shifts as the
-   numbers tick. ~2cm in from the left/right screen edges, ~3cm below the top
-   widget row, ~2cm up from the bottom. */
+/* Focused (big) clock frame: a fixed-size region marked by four L-shaped
+   corner brackets (no full border) that enclose the title, the digits and the
+   subtitle as one unit. It is sized from the viewport — not from the digits —
+   so it never shifts as the numbers tick. ~2cm in from the left/right screen
+   edges, ~3cm below the top widget row, ~2cm up from the bottom. */
 .pane--focused .viewfinder-frame {
   position: fixed;
   left: 2cm;
@@ -1608,15 +1608,33 @@ main {
   justify-content: center;
   gap: 0.5rem;
   padding: 1.5rem;
-  border: 9px double var(--border);
-  border-radius: 6px;
   overflow: hidden;
 }
 
-/* The corner brackets are only for the small (minor) clock widget; the big
-   focused frame uses a continuous double border instead. */
+/* Big corner brackets, drawn with thick double lines. */
 .pane--focused .viewfinder-frame__corner {
-  display: none;
+  width: 52px;
+  height: 52px;
+}
+
+.pane--focused .viewfinder-frame__corner--tl {
+  border-top: 9px double var(--border);
+  border-left: 9px double var(--border);
+}
+
+.pane--focused .viewfinder-frame__corner--tr {
+  border-top: 9px double var(--border);
+  border-right: 9px double var(--border);
+}
+
+.pane--focused .viewfinder-frame__corner--bl {
+  border-bottom: 9px double var(--border);
+  border-left: 9px double var(--border);
+}
+
+.pane--focused .viewfinder-frame__corner--br {
+  border-bottom: 9px double var(--border);
+  border-right: 9px double var(--border);
 }
 
 .viewfinder-frame__corner {

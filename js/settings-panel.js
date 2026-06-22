@@ -212,10 +212,6 @@
     styleGroup.classList.add('settings-panel__group--columns');
     fontsDropdown.appendChild(styleGroup);
 
-    fontsDropdown.appendChild(buildGroupLabel('Monospace'));
-    var monoGroup = buildRadioGroup('settings-panel-mono', MONO_OPTIONS, state.monoMode, onMonoChange);
-    fontsDropdown.appendChild(monoGroup);
-
     container.appendChild(fontsDropdown);
 
     // ---- Settings menu (the gear) --------------------------------------
@@ -232,6 +228,10 @@
     dropdown.appendChild(buildGroupLabel('Color'));
     var colorGroup = buildRadioGroup('settings-panel-color', COLOR_OPTIONS, state.colorScheme, onColorChange);
     dropdown.appendChild(colorGroup);
+
+    dropdown.appendChild(buildGroupLabel('Monospace'));
+    var monoGroup = buildRadioGroup('settings-panel-mono', MONO_OPTIONS, state.monoMode, onMonoChange);
+    dropdown.appendChild(monoGroup);
 
     dropdown.appendChild(buildGroupLabel('Effects'));
     var effectsGroup = document.createElement('div');
@@ -482,8 +482,8 @@
     state.monoMode = value;
     applyMono(value);
     savePrefs({ monoMode: value });
-    if (state.fontsDropdown) {
-      var radios = state.fontsDropdown.querySelectorAll('input[name="settings-panel-mono"]');
+    if (state.dropdown) {
+      var radios = state.dropdown.querySelectorAll('input[name="settings-panel-mono"]');
       for (var i = 0; i < radios.length; i++) {
         radios[i].checked = radios[i].value === value;
       }
